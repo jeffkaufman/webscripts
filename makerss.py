@@ -11,10 +11,13 @@ This is a partial rewrite to make this usable with django
 
 import sys, os, re
 from collections import defaultdict
-IN_HTML="/home/08/cbr/public_html/news.html"
-URL="http://sccs.swarthmore.edu/~cbr/news.html"
-OUT_DIR="/home/08/cbr/public_html/news/"
-URL_DIR="http://sccs.swarthmore.edu/~cbr/news"
+SITE_URL="http://sccs.swarthmore.edu/~cbr"
+SITE_DIR="/home/08/cbr/public_html"
+IN_HTML="%s/news.html" % SITE_DIR
+URL="%s/news.html" % SITE_URL
+OUT_DIR="%s/news" % SITE_DIR
+URL_DIR="%s/news" % SITE_URL
+RSS_URL="%s/news.rss" % SITE_URL
 
 def clear_news():
   for x in os.listdir(OUT_DIR):
@@ -31,8 +34,7 @@ def write_header():
   w('<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">')
   w('')
   w('  <channel>')
-  w('    <atom:link href="%s" rel="self" type="application/rss+xml" />' % (
-    URL.replace(".html", ".rss")))
+  w('    <atom:link href="%s" rel="self" type="application/rss+xml" />' % RSS_URL)
   w("    <title>Jeff :: News</title>")
   w("    <link>%s</link>" % URL)
   w("    <description>News From a Possibly No Longer Out Of Date Source</description>")
@@ -111,11 +113,11 @@ def items(s):
         
 def write_links_footer(p):
     p.write("  <hr>\n")
-    p.write('  <a href="http://sccs.swarthmore.edu/~cbr/news/all.html">Links to news items by date and title</a><br>\n')
-    p.write('  <a href="http://sccs.swarthmore.edu/~cbr/news/index.html">Recent news</a><br>\n')
-    p.write('  <a href="http://sccs.swarthmore.edu/~cbr/news.html">All news in one file</a><br>\n')
-    p.write('  <a href="http://sccs.swarthmore.edu/~cbr/news.rss">News as rss</a><br>\n')
-    p.write('  <a href="http://sccs.swarthmore.edu/~cbr/">Main page</a>\n')
+    p.write('  <a href="%s/all.html">Links to news items by date and title</a><br>\n' % URL_DIR)
+    p.write('  <a href="%s/index.html">Recent news</a><br>\n' % URL_DIR)
+    p.write('  <a href="%s">All news in one file</a><br>\n' % URL)
+    p.write('  <a href="%s">News as rss</a><br>\n' % RSS_URL)
+    p.write('  <a href="%s">Main page</a>\n' % SITE_URL)
     p.write('  </body></html>\n')
 
 
