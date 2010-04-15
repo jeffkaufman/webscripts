@@ -18,16 +18,20 @@ URL="%s/news.html" % SITE_URL
 OUT_DIR="%s/news" % SITE_DIR
 URL_DIR="%s/news" % SITE_URL
 RSS_URL="%s/news.rss" % SITE_URL
+RSS_FNAME="%s/news.rss" % SITE_DIR
 
 def clear_news():
   for x in os.listdir(OUT_DIR):
     if x.endswith(".html"):
       os.remove(os.path.join(OUT_DIR,x))
 
-
-def w(s):
-  print s
-
+if __name__ == "__main__":
+  RSS_OUT=open(RSS_FNAME, "w")
+  def w(s):
+    RSS_OUT.write(s + "\n")
+else:
+  def w(s):
+    print s
 
 def write_header():
   w('<?xml version="1.0" encoding="ISO-8859-1" ?>')
