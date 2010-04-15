@@ -3,6 +3,8 @@ usage:
 
   python makerss.py public_html/news.html > public_html/news.rss
 
+This is a partial rewrite to make this usable with django
+
 """
 
 
