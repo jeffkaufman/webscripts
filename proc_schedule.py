@@ -1,3 +1,5 @@
+""" processes the special events table in INDEX_FNAME """
+
 import os
 import sys
 import re
@@ -15,7 +17,7 @@ def parse_table(table_strings):
     def clean(s):
         if s is None:
             return s
-        s=s.string
+        s=str(s)
         for f, r in [["<td>", ""],
                      ["</td>", ""],
                      ["\n", " "],
@@ -173,8 +175,10 @@ def tidy_view(table_entries, ind=0, nodate=False):
     
     for target_date, activity, time, location  in table_entries:
         time_component = rpad(mk_tc(target_date, time), len(maxtime))
-                
-        lines.append("%s%s (%s)" % (time_component, activity, location))
+
+        s = "%s%s (%s)" % (time_component, activity, location)
+        s = re.sub("<[^>]*>","",s)
+        lines.append(s)
         
     return "\n".join(lines)
 
