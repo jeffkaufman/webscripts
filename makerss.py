@@ -1,9 +1,7 @@
 """
 usage:
 
-  python makerss.py public_html/news.html > public_html/news.rss
-
-This is a partial rewrite to make this usable with django
+  python makerss.py
 
 """
 
@@ -14,11 +12,44 @@ from collections import defaultdict
 SITE_URL="http://sccs.swarthmore.edu/~cbr"
 SITE_DIR="/home/08/cbr/public_html"
 IN_HTML="%s/news.html" % SITE_DIR
+FRONT_PAGE="%s/index.html" % SITE_DIR
+FRONT_PAGE_TMP=FRONT_PAGE+"~"
 URL="%s/news.html" % SITE_URL
 OUT_DIR="%s/news" % SITE_DIR
 URL_DIR="%s/news" % SITE_URL
 RSS_URL="%s/news.rss" % SITE_URL
 RSS_FNAME="%s/news.rss" % SITE_DIR
+RSS_MAX = 30
+FRONT_PAGE_MAX=7 # how many to show on the front page
+NEWS_MAIN_MAX=10 # how many to show on news/
+
+def edit_front_page(front_page_list):
+  outf = open(FRONT_PAGE_TMP, "w")
+  inf = open(FRONT_PAGE, "r")
+
+  skipping = False
+  for line in inf:
+    if "<!-- end recent thoughts -->" in line:
+      outf.write('<h3>News <small>(<a href="%s">more</a>)</small></h3>\n' % URL_DIR)
+      outf.write('<table border="0" title="links to news">\n')
+      outf.writelines(front_page_list)
+      outf.write('</table>\n')
+      skipping = False
+
+    if not skipping:
+      outf.write(line)
+
+    if "<!-- begin recent thoughts -->" in line:
+      skipping = True
+
+  assert not skipping
+
+  outf.close()
+  inf.close()
+
+  os.rename(FRONT_PAGE_TMP, FRONT_PAGE)
+    
+
 
 def clear_news():
   for x in os.listdir(OUT_DIR):
@@ -137,6 +168,8 @@ def start():
   
   tag_to_items = defaultdict(list)
 
+  front_page_list = []
+
   for n, (link_anchor, date, title, text, tags) \
         in enumerate(items(open(IN_HTML))):
 
@@ -152,28 +185,35 @@ def start():
     #guid = "%s#%s" % (URL, link_anchor)
     guid=link
     full_title="%s -- %s" % (date, title)
-    w('    <item>')
-    w('      <guid>%s</guid>' % guid)
-    w("      <title>%s</title>" % full_title)
-    w("      <link>%s</link>" % link)
+
+    if n < RSS_MAX:
+      w('    <item>')
+      w('      <guid>%s</guid>' % guid)
+      w("      <title>%s</title>" % full_title)
+      w("      <link>%s</link>" % link)
 
     month, day, year = date.split()[1:4]
 
-    w("      <pubDate>%s %s %s</pubDate>" % (day, month[:3], year))
-    w("      <description>%s</description>" %
-      text.replace("&", "&amp;").replace("<","&lt;").replace(">", "&gt;"))
-    w("    </item>")    
+    if n < RSS_MAX:
+      w("      <pubDate>%s %s %s 08:00:00 EST</pubDate>" % (day, month[:3], year))
+      w("      <description>%s</description>" %
+        text.replace("&", "&amp;").replace("<","&lt;").replace(">", "&gt;"))
+      w("    </item>")    
+
+    title_and_body = '<h3><a href="%s">%s</a></h3>%s\n' % (link, full_title, text)
 
     per_file = open(os.path.join(OUT_DIR, link_anchor + ".html"), "w")
     per_file.write("<html>\n")
     per_file.write("  <head><title>%s</title></head>\n" % full_title)
-    per_file.write("  <body><h3>%s</h3>%s" % (full_title,text))
+    per_file.write("  <body>%s" % title_and_body)
     write_links_footer(per_file)
     per_file.close()
 
-    if n < 10:
-      news_index.write('<h3><a href="%s">%s</a></h3>%s\n' % (
-        link, full_title, text))
+    if n < NEWS_MAIN_MAX:
+      news_index.write(title_and_body)
+    if n < FRONT_PAGE_MAX:
+      front_page_list.append('   <tr><td>%s<td>%s<td>%s<td><a href="%s">%s</a></tr>\n' % (
+        year, month, day, link, title))
 
     tags.add("all")
     for tag in tags:
@@ -195,7 +235,7 @@ def start():
   write_footer()
   write_links_footer(news_index)
         
-
+  edit_front_page(front_page_list)
 
 if __name__ == "__main__":
   start()
