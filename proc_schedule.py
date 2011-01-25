@@ -285,11 +285,11 @@ def write_ical(out=CAL_FNAME):
             w("DTEND;TZID=America/New_York:%sT%s%s00" % (
                   date_str, end_hr, end_min))
           else:
-            w("DTSTART;DATE:%s" % date_str)
-            w("DTEND;DATE:%s" % date_str)
+            w("DTSTART;VALUE=DATE:%s" % date_str)
+            w("DTEND;VALUE=DATE:%s" % date_str)
 
           w("LOCATION:%s" % location)
-          w("SUMMARY:%s" % descr)
+          w("SUMMARY:%s" % re.sub("<[^>]*>","",descr))
           w("END:VEVENT")
 
         w("END:VCALENDAR")
