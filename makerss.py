@@ -5,16 +5,13 @@ usage:
 
 """
 
-
-
 import sys, os, re
 from collections import defaultdict
 SITE_URL="http://sccs.swarthmore.edu/~cbr"
 SITE_DIR="/home/08/cbr/public_html"
-IN_HTML="%s/news.html" % SITE_DIR
+IN_HTML="%s/news_raw.html" % SITE_DIR
 FRONT_PAGE="%s/index.html" % SITE_DIR
 FRONT_PAGE_TMP=FRONT_PAGE+"~"
-URL="%s/news.html" % SITE_URL
 OUT_DIR="%s/news" % SITE_DIR
 URL_DIR="%s/news" % SITE_URL
 RSS_URL="%s/news.rss" % SITE_URL
@@ -22,6 +19,9 @@ RSS_FNAME="%s/news.rss" % SITE_DIR
 RSS_MAX = 30
 FRONT_PAGE_MAX=7 # how many to show on the front page
 NEWS_MAIN_MAX=10 # how many to show on news/
+COMMENTS_URL="http://cfebbea5.dotcloud.com/comments"
+#COMMENTS_URL="http://localhost:8010/comments"
+
 
 def edit_front_page(front_page_list):
   outf = open(FRONT_PAGE_TMP, "w")
@@ -71,7 +71,7 @@ def write_header():
   w('  <channel>')
   w('    <atom:link href="%s" rel="self" type="application/rss+xml" />' % RSS_URL)
   w("    <title>Jeff :: News</title>")
-  w("    <link>%s</link>" % URL)
+  w("    <link>%s</link>" % URL_DIR)
   w("    <description>News From a Possibly No Longer Out Of Date Source</description>")
   w("    <language>en-us</language>")
 
@@ -150,7 +150,6 @@ def write_links_footer(p):
     p.write("  <hr>\n")
     p.write('  <a href="%s/all.html">Links to news items by date and title</a><br>\n' % URL_DIR)
     p.write('  <a href="%s/index.html">Recent news</a><br>\n' % URL_DIR)
-    p.write('  <a href="%s">All news in one file</a><br>\n' % URL)
     p.write('  <a href="%s">News as rss</a><br>\n' % RSS_URL)
     p.write('  <a href="%s">Main page</a>\n' % SITE_URL)
     p.write('  </body></html>\n')
@@ -163,7 +162,10 @@ def start():
 
   news_index = open(os.path.join(OUT_DIR, "index.html"), "w")
   news_index.write("<html>\n")
-  news_index.write("  <head><title>Jeff :: News :: Recent</title></head>\n")
+  news_index.write("  <head><title>Jeff :: News :: Recent</title>\n")
+  news_index.write('    <link rel="alternate" type="application/rss+xml"\n')
+  news_index.write('          title="RSS" href="%s">\n' % RSS_URL)
+  news_index.write("  </head>\n")
   news_index.write("  <body><h2>Recent News</h2>\n")
   
   tag_to_items = defaultdict(list)
@@ -175,21 +177,39 @@ def start():
 
     link = "%s/%s.html" % (URL_DIR, link_anchor)
 
+    fb_tag = None
+    gp_tag = None
+
+    for tag in tags:
+      for starter in ["fb/note/", "fb/status/", "g+/"]:
+        if tag.startswith(starter):
+          if tag.startswith('fb/'):
+            fb_tag = tag
+          else:
+            gp_tag = tag
+
+    if fb_tag:
+      tags.remove(fb_tag)
+      fb_tag = fb_tag.replace("fb/", "")
+
+    if gp_tag:
+      tags.remove(gp_tag)
+      gp_tag = gp_tag.replace("g+/", "")
+
     if tags:
       tag_markup = ", ".join(
         '<a href="%s/%s.html">%s</a>' % (URL_DIR, tag, tag)
         for tag in tags)
-      text = '%s\n<div align="right">\n%s\n</div>\n' % (
-        text, tag_markup)
+      text = '%s\n<div align="right"><i>\n%s<br>%s\n</i></div>\n' % (
+        text, date, tag_markup)
 
     #guid = "%s#%s" % (URL, link_anchor)
     guid=link
-    full_title="%s -- %s" % (date, title)
 
     if n < RSS_MAX:
       w('    <item>')
       w('      <guid>%s</guid>' % guid)
-      w("      <title>%s</title>" % full_title)
+      w("      <title>%s</title>" % title)
       w("      <link>%s</link>" % link)
 
     month, day, year = date.split()[1:4]
@@ -200,12 +220,19 @@ def start():
         text.replace("&", "&amp;").replace("<","&lt;").replace(">", "&gt;"))
       w("    </item>")    
 
-    title_and_body = '<h3><a href="%s">%s</a></h3>%s\n' % (link, full_title, text)
+    title_and_body = '<h3><a href="%s">%s</a></h3>%s\n' % (link, title, text)
 
     per_file = open(os.path.join(OUT_DIR, link_anchor + ".html"), "w")
     per_file.write("<html>\n")
-    per_file.write("  <head><title>%s</title></head>\n" % full_title)
+    per_file.write("  <head><title>%s</title></head>\n" % title)
     per_file.write("  <body>%s" % title_and_body)
+
+    if fb_tag:
+      comments_full_url = "%s/%s" % (COMMENTS_URL, fb_tag)
+      if gp_tag:
+        comments_full_url += "/" + gp_tag
+      per_file.write('<script src="%s"></script>' % comments_full_url)
+
     write_links_footer(per_file)
     per_file.close()
 
