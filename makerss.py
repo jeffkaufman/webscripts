@@ -200,7 +200,7 @@ def start():
       tag_markup = ", ".join(
         '<a href="%s/%s.html">%s</a>' % (URL_DIR, tag, tag)
         for tag in tags)
-      text = '%s\n<div align="right"><i>\n%s<br>%s\n</i></div>\n' % (
+      text = '<p>%s\n<div align="right"><i>\n%s<br>%s\n</i></div>\n' % (
         text, date, tag_markup)
 
     #guid = "%s#%s" % (URL, link_anchor)
