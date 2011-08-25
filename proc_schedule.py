@@ -5,11 +5,13 @@ import sys
 import re
 from pprint import pprint
 from BeautifulSoup import BeautifulSoup
+import datetime
 from datetime import date, timedelta
 import calendar
 
 INDEX_FNAME="/home/08/cbr/public_html/index.html"
 CAL_FNAME="/home/08/cbr/public_html/schedule.ical"
+ORG_FNAME="/home/08/cbr/public_html/schedule.org"
 
 SPECIAL_TABLE='<table border="1" title="special events" cellspacing="0" cellpadding="2">'
 
@@ -274,10 +276,13 @@ def write_ical(out=CAL_FNAME):
         w("PRODID:-//Google Inc//Google Calendar 70.9054//EN")
 
         for date, descr, time, location in parse_table(b):
-          w("BEGIN:VEVENT")
           date_str = date.strftime("%Y%m%d")
-
           parsed_time = parse_time(time)
+
+          if in_past(date, parsed_time):
+              continue
+
+          w("BEGIN:VEVENT")
           if parsed_time:
             (start_hr, start_min), (end_hr, end_min) = parsed_time
             w("DTSTART;TZID=America/New_York:%sT%s%s00" % (
@@ -295,16 +300,69 @@ def write_ical(out=CAL_FNAME):
         w("END:VCALENDAR")
         open(out, "w").writelines(lines)
 
+def write_org(out=ORG_FNAME):
+        a,b,c = read_index(INDEX_FNAME)
+    
+        lines = []
+        def w(s):
+          lines.append(s+"\n")
+
+        w('* Schedule')
+
+        for date, descr, time, location in parse_table(b):
+            
+          date_str = date.strftime("%Y-%m-%d %a")
+          year = date.strftime("(%Y)")         
+          parsed_time = parse_time(time)
+
+          if in_past(date, parsed_time):
+              continue
+
+          if parsed_time:
+            (start_hr, start_min), (end_hr, end_min) = parsed_time
+            if (start_hr, start_min) == (end_hr, end_min):
+                timestamp = "<%s %s:%s>" % (date_str, start_hr, start_min)
+            else:
+                timestamp = "<%s %s:%s>--<%s %s:%s>" % (
+                    date_str, start_hr, start_min, date_str, end_hr, end_min)
+          else:
+              timestamp = "<%s>" % date_str
+
+          w("** %s (%s)" % (descr, location.replace(" %s" % year, "")))
+          w("   SCHEDULED: %s" % timestamp)
+          w("")
+        open(out, "w").writelines(lines)
+
+def in_past(date, parsed_time):
+    def dstr(x):
+        return x.strftime("%Y-%m-%d")
+
+    now = datetime.datetime.now()
+
+    if dstr(now) > dstr(date):
+        return True
+
+    if dstr(now) < dstr(date):
+        return False
+
+    if not parsed_time:
+        return False
+
+    (start_hr, start_min), (end_hr, end_min) = parsed_time
+    
+    return (now.hour, now.minute) > (end_hr, end_min)
+
 if __name__ == "__main__":
     if len(sys.argv) == 1:
         print "Expected opcode.  Allowed:"
         print "  rewrite"
         print "  add"
         print "  view"
-        print "  ical"
+        print "  out"
         
-    elif sys.argv[1] == "ical":
+    elif sys.argv[1] == "out":
         write_ical()
+        write_org()
 
     elif sys.argv[1] == "rewrite":
         a,b,c = read_index(INDEX_FNAME)
