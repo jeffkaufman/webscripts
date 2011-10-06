@@ -329,7 +329,7 @@ def write_org(out=ORG_FNAME):
               timestamp = "<%s>" % date_str
 
           w("** %s (%s)" % (descr, location.replace(" %s" % year, "")))
-          w("   SCHEDULED: %s" % timestamp)
+          w("   %s" % timestamp)
           w("")
         open(out, "w").writelines(lines)
 
