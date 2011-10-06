@@ -30,7 +30,8 @@ def edit_front_page(front_page_list):
   skipping = False
   for line in inf:
     if "<!-- end recent thoughts -->" in line:
-      outf.write('<h3>News <small>(<a href="%s">more</a>)</small></h3>\n' % URL_DIR)
+      outf.write('<h3>Blog Posts <small>(<a href="%s/all.html">all</a>)</small></h3>\n' % 
+                 URL_DIR)
       outf.write('<table border="0" title="links to news">\n')
       outf.writelines(front_page_list)
       outf.write('</table>\n')
@@ -144,14 +145,24 @@ def items(s):
 
   if cur_item:
     yield sendout()
+
+
+def links_partial(tag_block=""):
+  sep = '&nbsp;&nbsp;::&nbsp;&nbsp;'
+  s = sep.join(
+    ('<a href="%s">Jeff Kaufman</a>' % SITE_URL,
+     '<a href="%s/all.html">All Posts</a>' % URL_DIR,
+     '<a href="%s">RSS Feed</a>' % RSS_URL))
+  if tag_block:
+    s += sep + "Tagged: " + tag_block
+
+  s += "\n"
+  return s
       
         
-def write_links_footer(p):
+def write_links_footer(p, tag_block):
     p.write("  <hr>\n")
-    p.write('  <a href="%s/all.html">Links to news items by date and title</a><br>\n' % URL_DIR)
-    p.write('  <a href="%s/index.html">Recent news</a><br>\n' % URL_DIR)
-    p.write('  <a href="%s">News as rss</a><br>\n' % RSS_URL)
-    p.write('  <a href="%s">Main page</a>\n' % SITE_URL)
+    p.write(links_partial(tag_block))
     p.write('  </body></html>\n')
 
 
@@ -160,11 +171,18 @@ def start():
 
   write_header()
 
+
+  css = ('<style type="text/css">'
+         'p {max-width:700px;}'
+         '</style>')
+
+
   news_index = open(os.path.join(OUT_DIR, "index.html"), "w")
   news_index.write("<html>\n")
-  news_index.write("  <head><title>Jeff :: News :: Recent</title>\n")
+  news_index.write("  <head><title>Jeff :: Posts :: Recent</title>\n")
   news_index.write('    <link rel="alternate" type="application/rss+xml"\n')
   news_index.write('          title="RSS" href="%s">\n' % RSS_URL)
+  news_index.write(css)
   news_index.write("  </head>\n")
   news_index.write("  <body><h2>Recent News</h2>\n")
   
@@ -196,12 +214,15 @@ def start():
       tags.remove(gp_tag)
       gp_tag = gp_tag.replace("g+/", "")
 
+    text = "<p>" + text
+      
+    tag_block = ""
     if tags:
-      tag_markup = ", ".join(
-        '<a href="%s/%s.html">%s</a>' % (URL_DIR, tag, tag)
+      tag_block = ", ".join(
+        '<i><a href="%s/%s.html">%s</a></i>' % (URL_DIR, tag, tag)
         for tag in tags)
-      text = '<p>%s\n<div align="right"><i>\n%s<br>%s\n</i></div>\n' % (
-        text, date, tag_markup)
+      #text = '<p>%s\n<div align="right"><i>\n%s<br>%s\n</i></div>\n' % (
+      #  text, date, taga_markup)
 
     #guid = "%s#%s" % (URL, link_anchor)
     guid=link
@@ -220,12 +241,13 @@ def start():
         text.replace("&", "&amp;").replace("<","&lt;").replace(">", "&gt;"))
       w("    </item>")    
 
-    title_and_body = '<h3><a href="%s">%s</a></h3>%s\n' % (link, title, text)
+    title_and_body = '<h3><a href="%s">%s</a></h3><i>%s</i>%s\n' % (link, title, date, text)
 
     per_file = open(os.path.join(OUT_DIR, link_anchor + ".html"), "w")
+
     per_file.write("<html>\n")
-    per_file.write("  <head><title>%s</title></head>\n" % title)
-    per_file.write("  <body>%s" % title_and_body)
+    per_file.write("  <head><title>%s</title>%s</head>\n" % (title, css))
+    per_file.write("  <body>%s<hr>%s" % (links_partial(tag_block), title_and_body))
 
     if fb_tag:
       comments_full_url = "%s/%s" % (COMMENTS_URL, fb_tag)
@@ -233,7 +255,7 @@ def start():
         comments_full_url += "/" + gp_tag
       per_file.write('<script src="%s"></script>' % comments_full_url)
 
-    write_links_footer(per_file)
+    write_links_footer(per_file, tag_block)
     per_file.close()
 
     if n < NEWS_MAIN_MAX:
@@ -250,17 +272,18 @@ def start():
   for tag, item_list in tag_to_items.items():
     t = open(os.path.join(OUT_DIR, "%s.html" % tag), "w").write
     t("<html>\n")
-    t("  <head><title>Jeff :: News :: %s</title></head>\n" % tag)
-    t('  <body><h2>News :: %s</h2>\n<table border="0">\n' % tag)
+    t("  <head><title>Jeff :: Posts :: %s</title></head>\n" % tag)
+    t('  <body>%s<hr><h2>Posts :: %s</h2>\n<table border="0">\n' % (links_partial(), tag))
     for year, month, day, link, title in item_list:
       t('   <tr><td>%s<td>%s<td>%s<td><a href="%s">%s</a></tr>\n' % (
         year, month, day, link, title))
     t('  </table>\n')
+    t('  <hr>%s\n' % links_partial())
     t('  </body>\n')
     t('</html>\n')
 
   write_footer()
-  write_links_footer(news_index)
+  write_links_footer(news_index, "")
         
   edit_front_page(front_page_list)
 
