@@ -9,9 +9,9 @@ import datetime
 from datetime import date, timedelta
 import calendar
 
-INDEX_FNAME="/home/08/cbr/public_html/index.html"
-CAL_FNAME="/home/08/cbr/public_html/schedule.ical"
-ORG_FNAME="/home/08/cbr/public_html/schedule.org"
+INDEX_FNAME="/home/jeff/jtk/index.html"
+CAL_FNAME="/home/jeff/jtk/schedule.ical"
+ORG_FNAME="/home/jeff/jtk/schedule.org"
 
 SPECIAL_TABLE='<table border="1" title="special events" cellspacing="0" cellpadding="2">'
 
