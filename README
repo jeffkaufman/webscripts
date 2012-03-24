@@ -33,3 +33,17 @@ python makerss.py
  - updates rss feed
  - updates public_html/news/
 
+comment_requester_wsgi.py
+-------------------------
+
+Run this as wsgi.  It needs a facebook app created for it and you need an offline access
+token with scope as 'offline_access,read_stream' and your userid.  Then you can have urls
+as:
+
+  /comments/status/254488511312668/DX6awGUSScB
+
+to pull comments from:
+
+  https://www.facebook.com/jefftk/posts/254488511312668
+  https://plus.google.com/103013777355236494008/posts/DX6awGUSScB
+
