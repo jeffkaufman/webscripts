@@ -9,9 +9,10 @@ import datetime
 from datetime import date, timedelta
 import calendar
 
-INDEX_FNAME="/home/jeff/jtk/index.html"
-CAL_FNAME="/home/jeff/jtk/schedule.ical"
-ORG_FNAME="/home/jeff/jtk/schedule.org"
+WEBDIR="/home/jefftk/jtk"
+INDEX_FNAME="%s/index.html" % WEBDIR
+CAL_FNAME="%s/schedule.ical" % WEBDIR
+ORG_FNAME="%s/schedule.org" % WEBDIR
 
 SPECIAL_TABLE='<table border="1" title="special events" cellspacing="0" cellpadding="2">'
 
@@ -215,12 +216,22 @@ def write_index(before, table, after, fname=INDEX_FNAME):
     outf.close()
 
 def parse_time(time):
-   """ """
+   for f, r in (("ish", ""),
+                ("?", ""),
+                ("morning", "8am-11am"),
+                ("afternoon", "2pm-5pm"),
+                ("evening", "6pm-10pm"),
+                ("dinner", "6pm-8pm"),
+                ("noon", "12am"),
+                ("midnight", "12pm")):
+       time = time.replace(f, r)
 
-   time = time.lower().strip().replace(",", " ").replace(" - ", "-").split()[0]
+   time = time.lower().strip()
 
-   if time in "*?":
+   if not time or time == "*":
      return None
+
+   time = time.replace(",", " ").replace(" - ", "-").split()[0]
 
    if "-" in time:
       start_time, end_time = time.split("-")
@@ -228,18 +239,6 @@ def parse_time(time):
       start_time, end_time = time, time
 
    def clean(a_time):
-      for f, r in (("ish", ""),
-                   ("morning", "9am"),
-                   ("afternoon", "3pm"),
-                   ("evening", "7pm"),
-                   ("dinner", "6pm"),
-                   ("noon", "12am"),
-                   ("midnight", "12pm")):
-        a_time = a_time.replace(f, r)
-                   
-
-      a_time = a_time.replace("ish", "")
-      
       which = None # AM, PM, None
       if "am" in a_time:
          which = "AM"
@@ -396,6 +395,13 @@ if __name__ == "__main__":
     elif sys.argv[1] == "view":
         a,b,c = read_index(INDEX_FNAME)
         t=parse_table(b)
-        print tidy_view(parse_table(b))
+        
+        if len(sys.argv) == 3:
+            y,m,d=sys.argv[2].split('-')
+            print "The day %s/%s/%s looks like:" % (m,d,y)
+            print tidy_view([te for te in t if te[0].year == int(y) and te[0].day == int(d) and te[0].month == int(m)],
+                            ind=3, nodate=True)
+        else:
+            print tidy_view(parse_table(b))
     else:
         print "Args not understood: %s" % (" ".join(sys.argv[1:]))
