@@ -504,13 +504,13 @@ def write_links_footer(p, tag_block):
     p.write(links_partial(tag_block))
     p.write('  </body></html>\n')
 
-def write_rss_item_begin(n, w_partial, w_full, guid, title, link):
+def write_rss_item_begin(n, w_partial, w_full, title, link):
   for w in [w_partial, w_full]:
     if w == w_partial and n >= RSS_MAX:
       continue
 
     w('    <item>')
-    w('      <guid>%s</guid>' % guid)
+    w('      <guid>%s</guid>' % link)
     w("      <title>%s</title>" % title)
     w("      <link>%s</link>" % link)
 
@@ -602,7 +602,6 @@ def start():
       tags.remove("notyet")
 
     link = "%s/%s" % (P_URL, pretty_names[link_anchor])
-    guid = "%s/%s" % (URL_DIR, link_anchor)
 
     services = []
     for tag in tags:
@@ -653,7 +652,7 @@ def start():
       rss_comments_note = ""
 
     if not notyet:
-      write_rss_item_begin(n, w_partial, w_full, guid, title, link)
+      write_rss_item_begin(n, w_partial, w_full, title, link)
 
     month, day, year = date.split()[1:4]
 
