@@ -5,7 +5,7 @@ usage:
 
 """
 
-import sys, os, re, random
+import sys, os, re, random, shutil, stat
 
 SITE_URL="http://www.jefftk.com"
 SITE_DIR="/home/jefftk/jtk"
@@ -13,7 +13,9 @@ IN_HTML="%s/news_raw.html" % SITE_DIR
 FRONT_PAGE="%s/index.html" % SITE_DIR
 FRONT_PAGE_TMP=FRONT_PAGE+"~"
 OUT_DIR="%s/news" % SITE_DIR
+P_DIR="%s/p" % SITE_DIR
 URL_DIR="%s/news" % SITE_URL
+P_URL="%s/p" % SITE_URL
 RSS_URL="%s/news.rss" % SITE_URL
 RSS_FNAME="%s/news.rss" % SITE_DIR
 
@@ -24,22 +26,8 @@ FRONT_PAGE_MAX=6 # how many to show on the front page
 
 GP_UID="103013777355236494008"
 
-GA_STR = """
-<script type="text/javascript">
-
-  var _gaq = _gaq || [];
-  _gaq.push(['_setAccount', 'UA-27645543-1']);
-  _gaq.push(['_setSiteSpeedSampleRate', 100]);
-  _gaq.push(['_trackPageview']);
-
-  (function() {
-    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-  })();
-
-</script>
-"""
+def meta_viewport(n):
+  return '<meta name="viewport" content="width=%spx">' % n
 
 COMMENT_SCRIPT = r"""
 <script type="text/javascript">
@@ -308,46 +296,6 @@ function pullComments(wsgiUrl, serviceName) {
 </script>
 """
 
-def best_posts():
-  best = [
-    ('2012-08-07', 'Singular They: Towards Ungendered Language'),
-    ('2012-03-29', 'Teach Yourself any Instrument'),
-    ('2012-03-28', 'Brain Preservation'),
-    ('2012-03-24', 'Insurance and Health Care'),
-    ('2012-02-13', 'You Should Be Logging Shell History'),
-    ('2012-02-03', 'Octaveless Bass Notes'),
-    ('2011-12-29', 'Instrument Complexity and Automation'),
-    ('2011-09-23', 'Letter From Our Crazy Ex-Landlord'),
-    ('2011-12-03', 'A Right to Publicy'),
-    ('2011-11-13', 'Personal Consumption Changes As Charity'),
-    ('2011-11-02', 'Whole Brain Emulation and Nematodes'),
-    ('2011-10-15', 'Local Action and Remote Donation'),
-    ('2011-10-04', 'Online Community Aging'),
-    ('2011-09-11', 'Mandolin Microphone Placement'),
-    ('2011-09-09', 'Charities and Waste'),
-    ('2011-08-08', 'Negative Income Tax'),
-    #('2011-08-07', 'Contra Dance Calling With Lights'),
-    ('2011-07-27', 'Belief Listing Project: Giving'),
-    ('2011-07-18', 'Contra Dance Unplugged'),
-    ('2011-07-15', 'Undisabling A Keyboard\'s Internal Speakers'),
-    ('2011-06-18', 'Boston Apartment Prices Map'),
-    ('2011-04-12', 'Giving Up On Privacy'),
-    ('2011-01-08', 'Significant Whitespace In Expressions'),
-    ('2010-12-05', 'Abstracting Compassion'),
-    ('2010-11-17', 'Transit Service Quality Map'),
-    ('2010-07-23', 'Tracking Down a Statistic: Does Fairtrade Work?'),
-    ('2010-05-25', 'Putting Words Off-Limits'),
-    ('2009-09-29', 'The \'Expand This Here\' Operator'),
-    # ('2009-03-11', 'Introducing icdiff'),
-    ]
-
-  random.shuffle(best)
-
-  return '<p>Top Posts:</p><ul>%s</ul>' % (
-   "".join('<li style="margin-bottom: 0.5em;"><a href="%s/%s">%s</a>' % (URL_DIR, post_date, post_title)
-           for (post_date, post_title) in random.sample(best,5)))
-
-
 def edit_front_page(front_page_list):
   outf = open(FRONT_PAGE_TMP, "w")
   inf = open(FRONT_PAGE, "r")
@@ -355,11 +303,9 @@ def edit_front_page(front_page_list):
   skipping = False
   for line in inf:
     if "<!-- end recent thoughts -->" in line:
-      outf.write('<table border="0" title="links to news" valign="top">\n')
-      outf.write('<tr><td colspan="3"><b>Blog Posts</b><td rowspan="100">')
-      outf.writelines(front_page_list[:FRONT_PAGE_MAX])
-      outf.write('<tr><td><td><td><td><a href="%s">more posts...</a>\n' % URL_DIR)
-      outf.write('</table>\n')
+      for entry in front_page_list:
+        outf.write("\n".join(entry))
+        outf.write("\n")
       skipping = False
 
     if not skipping:
@@ -382,6 +328,9 @@ def clear_news():
   for x in os.listdir(OUT_DIR):
     if x.endswith(".html"):
       os.remove(os.path.join(OUT_DIR,x))
+  for x in os.listdir(P_DIR):
+    if x.endswith(".html"):
+      os.remove(os.path.join(P_DIR,x))
 
 def write_header(w, d=None):
   w('<?xml version="1.0" encoding="ISO-8859-1" ?>')
@@ -462,12 +411,85 @@ def items(s):
   if cur_item:
     yield sendout()
 
+def title_to_url_component(s):
+  s = s.lower()
+  s = s.replace("'", "").replace('"', "")
+  s = re.sub("[^A-Za-z0-9]", "-", s)
+  s = re.sub("-+", "-", s)
+  s = re.sub("^-*", "", s)
+  s = re.sub("-*$", "", s)
+  return s
+
+pretty_names = {}
+titles = {}
+with open(IN_HTML) as inf:
+  for n, (link_anchor, date, title, raw_text, tags) \
+        in enumerate(items(open(IN_HTML))):
+    pretty_name = title_to_url_component(title)
+    
+    if pretty_name in titles:
+      raise Exception("'%s' for %s turns to %s which is a duplicate" % (
+          title, link_anchor, pretty_name))
+    titles[pretty_name] = 1
+    pretty_names[link_anchor] = pretty_name
+
+def best_posts():
+  best = [
+    ('2013-05-28', 'Haiti and Disaster Relief'),
+    ('2013-05-11', 'Keeping Choices Donation Neutral'),
+    ('2013-04-01', 'The Unintuitive Power Laws of Giving'),
+    ('2013-03-06', 'Getting Myself to Eat Vegetables'),
+    ('2013-01-22', 'Debt Relief Is Bad Means Testing'),
+    ('2012-10-30', 'Contra Cliquishness: Healthy?'),
+    ('2012-09-21', 'Make Your Giving Public'),
+    ('2012-09-17', 'Record Your Playing'),
+    ('2012-09-11', 'Objecting to Situations'),
+    ('2012-08-08', 'Artificial Recordings and Unrealistic Standards'),
+    ('2012-08-07', 'Singular They: Towards Ungendered Language'),
+    ('2012-07-14', 'Exercises'),
+    ('2012-03-29', 'Teach Yourself any Instrument'),
+    ('2012-03-28', 'Brain Preservation'),
+    ('2012-03-24', 'Insurance and Health Care'),
+    ('2012-02-13', 'You Should Be Logging Shell History'),
+    ('2012-02-03', 'Octaveless Bass Notes'),
+    ('2011-12-29', 'Instrument Complexity and Automation'),
+    ('2011-09-23', 'Letter From Our Crazy Ex-Landlord'),
+    ('2011-12-03', 'A Right to Publicy'),
+    ('2011-11-13', 'Personal Consumption Changes As Charity'),
+    ('2011-11-02', 'Whole Brain Emulation and Nematodes'),
+    ('2011-10-15', 'Local Action and Remote Donation'),
+    ('2011-10-04', 'Online Community Aging'),
+    ('2011-09-11', 'Mandolin Microphone Placement'),
+    ('2011-09-09', 'Charities and Waste'),
+    ('2011-08-08', 'Negative Income Tax'),
+    #('2011-08-07', 'Contra Dance Calling With Lights'),
+    ('2011-07-27', 'Belief Listing Project: Giving'),
+    ('2011-07-18', 'Contra Dance Unplugged'),
+    ('2011-07-15', 'Undisabling A Keyboard\'s Internal Speakers'),
+    ('2011-06-18', 'Boston Apartment Prices Map'),
+    ('2011-04-12', 'Giving Up On Privacy'),
+    ('2011-01-08', 'Significant Whitespace In Expressions'),
+    ('2010-12-05', 'Abstracting Compassion'),
+    ('2010-11-17', 'Transit Service Quality Map'),
+    ('2010-07-23', 'Tracking Down a Statistic: Does Fairtrade Work?'),
+    ('2010-05-25', 'Putting Words Off-Limits'),
+    #('2009-09-29', 'The \'Expand This Here\' Operator'),
+    # ('2009-03-11', 'Introducing icdiff'),
+    ]
+
+  random.shuffle(best)
+
+  return '<p>Top Posts:</p><ul>%s</ul>' % (
+    "".join('<li style="margin-bottom: 0.5em;"><a href="%s/%s">%s</a>' % (
+        P_URL, pretty_names[post_date], post_title)
+            for (post_date, post_title) in random.sample(best,5)))
+
 
 def links_partial(tag_block=""):
   sep = '&nbsp;&nbsp;::&nbsp;&nbsp;'
   s = sep.join(
     ('<a href="/" rel="author">Jeff Kaufman</a>',
-     '<a href="/news/">Blog Posts</a>',
+     '<a href="/p/index">Blog Posts</a>',
      '<a href="/news.rss">RSS Feed</a>',
      '<a href="__REVERSE_RSS__">RSS Reverse Feed</a>',
      '<a href="/contact">Contact</a>'))
@@ -475,7 +497,7 @@ def links_partial(tag_block=""):
     s += sep + "Tagged: " + tag_block
 
   s += "\n"
-  return s
+  return "<div class=headfoot>%s</div>" % s
 
 def write_links_footer(p, tag_block):
     p.write("  <hr>\n")
@@ -511,43 +533,76 @@ def start():
 
   clear_news()
   os.symlink("%s/all.html" % OUT_DIR, "%s/index.html" % OUT_DIR)
+  os.symlink("%s/all.html" % OUT_DIR, "%s/index.html" % P_DIR)
 
   write_header(w_partial)
   write_header(w_full)
 
   css = ('<style type="text/css">'
-         #'li, p, blockquote {max-width:35em;}'
          '.comment-thread {margin: 0px 0px 0px 30px;}'
          '.date {float: right; display: block}'
-         '.content {max-width:35em;}'
-         '.comment {max-width: 28em;'
+         '.content {max-width:560px;}'
+         '.comment {max-width: 448px;'
+         '          overflow: hidden;'
+         '          overflow-wrap: break-word;'
          '          margin-top: 0px;'
          '          margin-bottom: -1px;'
          '          border-top:1px solid black;'
          '          border-bottom:1px solid black;'
          '          padding-top:10px;}'
          '.highlighted {background-color: lightyellow;}'
+         '#top-posts { padding-left: 30px; }'
+         '@media (max-width: 850px) {'
+         '  #top-posts { padding-left: 5px; } }'
+         '@media (max-width: 800px) {'
+         '  #top-posts { display: none; }'
+         '  .headfoot { font-size: 24px; }'
+         '}'
+         '@media (max-width: 610px) {'
+         '  .content, .comment {'
+         '     font-size: 32px;'
+         '  }'
+         '  .date {'
+         '     font-size: 24px;'
+         '  }'
+         '}'
+         'html * {max-height:1000000px;} // disable font-boost'
          '</style>')
 
   tag_to_items = {}
 
   front_page_list = []
 
-  for n, (link_anchor, date, title, text, tags) \
+  for n, (link_anchor, date, title, raw_text, tags) \
         in enumerate(items(open(IN_HTML))):
 
-    text = re.sub(r'href="(20\d\d-\d\d?-\d\d?)"',
-                  r'href="%s/\1"' % URL_DIR,
-                  text)
+    for old_name, new_name in pretty_names.iteritems():
+      raw_text = raw_text.replace('href="%s"' % old_name,
+                                  'href="%s/%s"' % (P_URL, new_name))
 
-    text = text.replace('href="/', 'href="%s/' % SITE_URL)
-    text = text.replace('src="/', 'src="%s/' % SITE_URL)
+    raw_text = re.sub(r'href="(20\d\d-\d\d?-\d\d?)"',
+                      r'href="%s/\1"' % URL_DIR,
+                      raw_text)
+
+    raw_text = raw_text.replace('href="/', 'href="%s/' % SITE_URL)
+    raw_text = raw_text.replace('src="/', 'src="%s/' % SITE_URL)
+
+    if "~~break~~" in raw_text:
+      beginning_text, ending_text = raw_text.split("~~break~~")
+      broke_text = True
+    else:
+      beginning_text = raw_text
+      ending_text = ""
+      broke_text = False
+
+    text = "%s%s" % (beginning_text, ending_text)
 
     notyet = "notyet" in tags
     if notyet:
       tags.remove("notyet")
 
-    link = "%s/%s" % (URL_DIR, link_anchor)
+    link = "%s/%s" % (P_URL, pretty_names[link_anchor])
+    guid = "%s/%s" % (URL_DIR, link_anchor)
 
     services = []
     for tag in tags:
@@ -579,7 +634,8 @@ def start():
 
     no_tags_no_ws = re.sub('<[^>]*>', '', re.sub('\s+',' ',text)).strip()
     meta = ('<meta name="description" content="%s..." />' % quote(no_tags_no_ws[:400]) + " " +
-            '<meta name="keywords" content="%s" />' % quote(', '.join(tags)))
+            '<meta name="keywords" content="%s" />' % quote(', '.join(tags)) + " " + 
+            meta_viewport(600))
 
     text = "<p>" + text
 
@@ -588,8 +644,6 @@ def start():
       tag_block = ", ".join(
         '<i><a href="%s/%s">%s</a></i>' % (URL_DIR, tag, tag)
         for tag in tags)
-
-    guid=link
 
     if services:
       comments_links = ", ".join('<a href="%s">%s</a>' % (service_link, service_name)
@@ -621,12 +675,14 @@ def start():
     title_and_body = ('<div class="content"><i class="date">%s</i><h3><a href="%s">%s</a>'
                       '</h3>\n%s</div>\n' % (fancy_date, link, title, text))
 
-    per_file = open(os.path.join(OUT_DIR, link_anchor + ".html"), "w")
+    date_number_file = os.path.join(OUT_DIR, link_anchor + ".html")
+    pretty_name_file = os.path.join(P_DIR, pretty_names[link_anchor] + ".html")
+    per_file = open(date_number_file, "w")
 
     per_file.write("<html>\n")
     per_file.write("  <head><title>%s</title>%s%s</head>\n" % (title, meta, css))
-    per_file.write("  <body>%s<hr><table><tr><td valign=\"top\">%s<td valign=\"top\""
-                   "  style=\"padding-left: 150px;\">%s</table><p>" % (
+    per_file.write('  <body>%s<hr><table><tr><td valign="top">%s<td valign="top"'
+                   '  id=top-posts>%s</table><p>' % (
         links_partial(tag_block), title_and_body, best_posts()))
 
     if services:
@@ -645,12 +701,30 @@ def start():
     write_links_footer(per_file, tag_block)
     per_file.close()
 
-    if not notyet:
-      front_page_list.append('   <tr><td><small>%s</small>'
-                             '       <td><small>%s</small>'
-                             '       <td><small>%s</small>'
-                             '       <td><a href="%s">%s</a></tr>\n' % (
-        year, month[:3], tidy_day(day), link, title))
+    shutil.copy(date_number_file, pretty_name_file)
+    st = os.stat(date_number_file)
+    os.chmod(date_number_file, st.st_mode & (stat.S_IRUSR | stat.S_IWUSR))
+
+    if not notyet and len(front_page_list) < FRONT_PAGE_MAX:
+      blog_entry_summary = []
+      w = blog_entry_summary.append
+      w("<div class=blog-entry-summary>")
+      w("<div class=blog-entry-date><a class=invisible-link href='%s'>" % link)
+      w("%s %s, %s" % (month, tidy_day(day), year))
+      w("</a></div>")
+      w("<div class=blog-entry-title><a class=invisible-link href='%s'>%s</a></div>" % (link, title))
+      w("<div class=blog-entry-beginning>")
+      w("<p>")
+      w(beginning_text)
+      
+      if broke_text:
+        w(" <a href='%s'>more...</a>" % link)
+      else:
+        w("<p><a href='%s'>full post...</a>" % link)
+
+      w("</div>")
+      w("</div>")
+      front_page_list.append(blog_entry_summary)
 
     tags.add("all")
     for tag in tags:
@@ -663,7 +737,8 @@ def start():
   for tag, item_list in tag_to_items.items():
     t = open(os.path.join(OUT_DIR, "%s.html" % tag), "w").write
     t("<html>\n")
-    t("  <head><title>Jeff :: Posts :: %s</title>%s</head>\n" % (tag, GA_STR))
+    t("  <head><title>Jeff :: Posts :: %s</title>%s</head>\n" % (tag, meta_viewport(400)))
+    t('  <style>@media (max-width: 410px) {.headfoot { font-size: 10px; }} </style>')
     t('  <body>%s<hr><h2>Posts :: %s</h2>\n<table border="0">\n' % (links_partial(), tag))
     for year, month, day, link, title in item_list:
       t('   <tr><td>%s<td>%s<td>%s<td><a href="%s">%s</a></tr>\n' % (
