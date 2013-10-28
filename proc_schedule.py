@@ -10,7 +10,7 @@ from datetime import date, timedelta
 import calendar
 
 WEBDIR="/home/jefftk/jtk"
-INDEX_FNAME="%s/index.html" % WEBDIR
+FUTURE_FNAME="%s/future.html" % WEBDIR
 CAL_FNAME="%s/schedule.ical" % WEBDIR
 ORG_FNAME="%s/schedule.org" % WEBDIR
 
@@ -185,7 +185,7 @@ def tidy_view(table_entries, ind=0, nodate=False):
         
     return "\n".join(lines)
 
-def read_index(fname=INDEX_FNAME):
+def read_index(fname=FUTURE_FNAME):
     inf = open(fname)
 
     before_table_lines = []
@@ -207,7 +207,7 @@ def read_index(fname=INDEX_FNAME):
 
     return before_table_lines, table_lines, after_table_lines
 
-def write_index(before, table, after, fname=INDEX_FNAME):
+def write_index(before, table, after, fname=FUTURE_FNAME):
     os.rename(fname, fname + "~")
     outf = open(fname, "w")
     outf.writelines(before)
@@ -254,7 +254,9 @@ def parse_time(time):
 
       hours, minutes = int(hours), int(minutes)
 
-      if which == "PM" or (which is None and hours <= 9):
+      add_12 = "AM" if hours == 12 else "PM"
+
+      if which == add_12 or (which is None and hours <= 9):
          hours += 12
 
       hours, minutes = str(hours).zfill(2), str(minutes).zfill(2)
@@ -263,9 +265,20 @@ def parse_time(time):
 
    return clean(start_time), clean(end_time)
 
+def update_tz(descr, current_tz):
+    m = re.match(".*\(to ([^)]*) Time\).*", descr)
+    if not m:
+        return current_tz
+
+    return {"Eastern": "America/New_York",
+            "Central": "America/Chicago",
+            "Pacific": "America/Los_Angeles"}[m.groups()[0]]
+
 def write_ical(out=CAL_FNAME):
-        a,b,c = read_index(INDEX_FNAME)
+        a,b,c = read_index(FUTURE_FNAME)
     
+        tz = "America/New_York"
+
         lines = []
         def w(s):
           lines.append(s+"\n")
@@ -284,10 +297,13 @@ def write_ical(out=CAL_FNAME):
           w("BEGIN:VEVENT")
           if parsed_time:
             (start_hr, start_min), (end_hr, end_min) = parsed_time
-            w("DTSTART;TZID=America/New_York:%sT%s%s00" % (
-                  date_str, start_hr, start_min))
-            w("DTEND;TZID=America/New_York:%sT%s%s00" % (
-                  date_str, end_hr, end_min))
+            w("DTSTART;TZID=%s:%sT%s%s00" % (
+                  tz, date_str, start_hr, start_min))
+
+            tz = update_tz(descr, tz)
+
+            w("DTEND;TZID=%s:%sT%s%s00" % (
+                  tz, date_str, end_hr, end_min))
           else:
             w("DTSTART;VALUE=DATE:%s" % date_str)
             w("DTEND;VALUE=DATE:%s" % date_str)
@@ -300,7 +316,7 @@ def write_ical(out=CAL_FNAME):
         open(out, "w").writelines(lines)
 
 def write_org(out=ORG_FNAME):
-        a,b,c = read_index(INDEX_FNAME)
+        a,b,c = read_index(FUTURE_FNAME)
     
         lines = []
         def w(s):
@@ -364,14 +380,14 @@ if __name__ == "__main__":
         write_org()
 
     elif sys.argv[1] == "rewrite":
-        a,b,c = read_index(INDEX_FNAME)
+        a,b,c = read_index(FUTURE_FNAME)
     
         t=parse_table(b)
         pprint(t)
         u=unparse_table(t)
         pprint(u)
     
-        write_index(a,u,c,INDEX_FNAME)
+        write_index(a,u,c,FUTURE_FNAME)
     elif sys.argv[1] == "add":
         if len(sys.argv) == 2:
             table_entry = make_table_entry(
@@ -382,7 +398,7 @@ if __name__ == "__main__":
                 raw_input("location: "))
         else:
             table_entry = make_table_entry(*sys.argv[2:])
-        a,b,c = read_index(INDEX_FNAME)
+        a,b,c = read_index(FUTURE_FNAME)
         t=parse_table(b)     
 
         t = add_to_table(table_entry, t)
@@ -391,9 +407,9 @@ if __name__ == "__main__":
         print "The day %s looks like:" % pretty_date(table_entry[0],yearfirst=False)
         print tidy_view([te for te in t if te[0] == table_entry[0]],
                          ind=3, nodate=True)
-        write_index(a,unparse_table(t),c,INDEX_FNAME)
+        write_index(a,unparse_table(t),c,FUTURE_FNAME)
     elif sys.argv[1] == "view":
-        a,b,c = read_index(INDEX_FNAME)
+        a,b,c = read_index(FUTURE_FNAME)
         t=parse_table(b)
         
         if len(sys.argv) == 3:
