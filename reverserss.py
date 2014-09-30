@@ -19,8 +19,8 @@ def posts_for(posts, post_number):
 def write_post(posts, post_number, header, footer):
     with open(rss_from(post_number), "w") as outf:
         header = header.replace(
-            "Jeff :: News",
-            "Jeff :: News back from post %s" % post_number)
+            "Jeff :: Posts",
+            "Jeff :: Posts back from post %s" % post_number)
         header = header.replace(
             "</description>",
             " from post %s back</description>" % post_number)
@@ -50,6 +50,48 @@ def edit_in_reverse_rss_link(post_number, current_number, post_slug):
     with open(fname, "w") as outf:
         outf.write(post)
 
+def cateogrize_header(header, category, full):
+    header = header.replace(
+        "Jeff :: Posts",
+        "Jeff :: Posts on %s" % category)
+    header = header.replace(
+        "</description>",
+        " posts on %s</description>" % category)
+    header = header.replace(
+        '<atom:link href="http://www.jefftk.com/news.rss"',
+        '<atom:link href="http://www.jefftk.com/news/%s%s.rss"' % (
+            category,
+            "_full" if full else ""))
+    return header
+
+def write_category_feeds(header, posts, footer):
+    category_counts = {} # category -> int
+    for post in posts:
+      categories = re.findall("<category>([^>]*)</category>", post)
+      for category in categories:
+        fname = "/home/jefftk/jtk/news/%s.rss" % category
+        fname_full = "/home/jefftk/jtk/news/%s_full.rss" % category
+        is_new = category not in category_counts
+
+        with open(fname, "w" if is_new else "a") as outf:
+          with open(fname_full, "w" if is_new else "a") as outf_full:
+            if is_new:
+              category_counts[category] = 0
+              # TODO: make header substitutions
+              outf.write(cateogrize_header(header, category, full=False))
+              outf_full.write(cateogrize_header(header, category, full=True))
+            if category_counts[category] < 10:
+              outf.write(post)
+            outf_full.write(post)
+            category_counts[category] += 1
+    for category in category_counts:
+      fname = "/home/jefftk/jtk/news/%s.rss" % category
+      fname_full = "/home/jefftk/jtk/news/%s_full.rss" % category
+      with open(fname, "a") as outf:
+        outf.write(footer)
+      with open(fname_full, "a") as outf_full:
+        outf_full.write(footer)
+
 def start():
     header = []
     posts = []
@@ -71,6 +113,8 @@ def start():
             if "</item>" in line:
                 posts.append("".join(current_post))
                 current_post = []
+
+    write_category_feeds("".join(header), posts, "".join(footer))
 
     posts.reverse()
 

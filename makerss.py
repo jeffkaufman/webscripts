@@ -31,6 +31,13 @@ def meta_viewport(n):
 
 COMMENT_SCRIPT = r"""
 <script type="text/javascript">
+var last_visit = document.cookie.replace(/(?:(?:^|.*;\s*)jtk_last_visit\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+var current_time = new Date().getTime();
+var one_year_gmt_str = new Date(current_time + 31536000000).toGMTString();
+document.cookie = "jtk_last_visit=" + current_time +
+                          "; path=" + window.location.pathname +
+                       "; expires=" + one_year_gmt_str;
+
 function ajaxJsonRequest(url, callback) {
   function createRequestObject() {
     var tmpXmlHttpObject;
@@ -217,8 +224,16 @@ function display_posts_helper(comments) {
 
     h += "<div class=comment id='" + anchor + "'>";
     h += "<div style='display:none'>ts=" + ts + "</div>";
-    h += "<a href='" + user_link + "'>" + name + "</a> (" + service_abbr(service) + "):<p>" + message + "</p>";
-    h += "</div>";
+    h += "<a href='" + user_link + "'>" + name + "</a> (";
+    h += service_abbr(service) + "): ";
+    h += "<a href='#" + anchor + "' class=commentlink>link</a>";
+    h += "<div";
+    if (last_visit.length > 0 && ts > last_visit/1000) {
+      h += " class=newcomment";
+    }
+    h += ">";
+    h += "<p>" + message + "</p>";
+    h += "</div></div>";
 
     if (children.length > 0) {
       h += "<div class=\"comment-thread\">";
@@ -338,7 +353,7 @@ def write_header(w, d=None):
   w('')
   w('  <channel>')
   w('    <atom:link href="%s" rel="self" type="application/rss+xml" />' % RSS_URL)
-  w("    <title>Jeff :: News</title>")
+  w("    <title>Jeff :: Posts</title>")
   w("    <link>%s</link>" % URL_DIR)
   w("    <description>Jeff Kaufman's Blog</description>")
   w("    <language>en-us</language>")
@@ -435,18 +450,32 @@ with open(IN_HTML) as inf:
 
 def best_posts():
   best = [
+    ('2014-02-27', 'Playing to Lose'),
+    ('2014-02-18', 'Dance Weekend and Festival Survey'),
+    ('2014-01-26', 'Contra Dance Band Size'),
+    ('2013-12-28', 'Getting Booked For Dances'),
+    ('2013-10-22', 'OK to Have Kids?'),
+    ('2013-10-01', 'John Wesley on Earning to Give'),
+    ('2013-08-22', 'Rationing With Small Reserves'),
+    ('2013-08-13', 'Simplest Interesting Game'),
+    ('2013-07-21', 'Against Singular Ye'),
+    ('2013-06-25', 'Is Pandora Really Exploiting Artists?'),
+    ('2013-06-14', 'Is Unicode Safe?'),
+    ('2013-06-06', 'Survey of Historical Stock Advice'),
     ('2013-05-28', 'Haiti and Disaster Relief'),
     ('2013-05-11', 'Keeping Choices Donation Neutral'),
     ('2013-04-01', 'The Unintuitive Power Laws of Giving'),
     ('2013-03-06', 'Getting Myself to Eat Vegetables'),
     ('2013-01-22', 'Debt Relief Is Bad Means Testing'),
     ('2012-10-30', 'Contra Cliquishness: Healthy?'),
+    ('2012-10-03', 'Parenting and Happiness'),
     ('2012-09-21', 'Make Your Giving Public'),
     ('2012-09-17', 'Record Your Playing'),
     ('2012-09-11', 'Objecting to Situations'),
     ('2012-08-08', 'Artificial Recordings and Unrealistic Standards'),
     ('2012-08-07', 'Singular They: Towards Ungendered Language'),
     ('2012-07-14', 'Exercises'),
+    ('2012-06-17', 'Altruistic Kidney Donation'),
     ('2012-03-29', 'Teach Yourself any Instrument'),
     ('2012-03-28', 'Brain Preservation'),
     ('2012-03-24', 'Insurance and Health Care'),
@@ -504,7 +533,7 @@ def write_links_footer(p, tag_block):
     p.write(links_partial(tag_block))
     p.write('  </body></html>\n')
 
-def write_rss_item_begin(n, w_partial, w_full, title, link):
+def write_rss_item_begin(n, w_partial, w_full, title, link, tags):
   for w in [w_partial, w_full]:
     if w == w_partial and n >= RSS_MAX:
       continue
@@ -513,6 +542,8 @@ def write_rss_item_begin(n, w_partial, w_full, title, link):
     w('      <guid>%s</guid>' % link)
     w("      <title>%s</title>" % title)
     w("      <link>%s</link>" % link)
+    for tag in sorted(tags):
+      w("      <category>%s</category>" % tag)
 
 def write_rss_item_end(n, w_partial, w_full, day, month, year, t):
   for w in [w_partial, w_full]:
@@ -526,6 +557,7 @@ def write_rss_item_end(n, w_partial, w_full, day, month, year, t):
 def start():
   rss_out=open(RSS_FNAME, "w")
   rss_full_out=open(RSS_FULL_FNAME, "w")
+
   def w_partial(s):
     rss_out.write(s + "\n")
   def w_full(s):
@@ -550,6 +582,12 @@ def start():
          '          border-top:1px solid black;'
          '          border-bottom:1px solid black;'
          '          padding-top:10px;}'
+         '.newcomment { border-left: 1px solid black;'
+         '              padding-left: 5px; }'
+         '.commentlink {font-style: italic;'
+         '              font-size: 80%;'
+         '              visibility: hidden;}'
+         '.comment:hover .commentlink {visibility: visible}'
          '.highlighted {background-color: lightyellow;}'
          '#top-posts { padding-left: 30px; }'
          '@media (max-width: 850px) {'
@@ -576,6 +614,8 @@ def start():
   for n, (link_anchor, date, title, raw_text, tags) \
         in enumerate(items(open(IN_HTML))):
 
+    link = "%s/%s" % (P_URL, pretty_names[link_anchor])
+
     for old_name, new_name in pretty_names.iteritems():
       raw_text = raw_text.replace('href="%s' % old_name,
                                   'href="%s/%s' % (P_URL, new_name))
@@ -583,6 +623,27 @@ def start():
     raw_text = re.sub(r'href="(20\d\d-\d\d?-\d\d?)(["#])',
                       r'href="%s/\1\2' % URL_DIR,
                       raw_text)
+
+    new_raw_text = []
+    for line in raw_text.split("\n"):
+      if "<img src=" in line:
+        matches = re.findall('<img src="([^"]*)"', line)
+        if len(matches) == 1:
+          oldlink = matches[0]
+          if oldlink.startswith("/"):
+            fname, ext = oldlink.rsplit(".", 1)
+            if ext in ["jpg", "png"]:
+              newlink = "%s-2x.%s" % (fname, ext)
+              for suffix in ["-sm", "-small", "-tn"]:
+                if fname.endswith(suffix):
+                  newlink = "%s-2x.%s" % (fname[:-len(suffix)], ext)
+              newlink_ondisk = "%s%s" % (SITE_DIR, newlink)
+              if os.path.exists(newlink_ondisk):
+                #print "using %s as srcset for %s" % (newlink, oldlink)
+                line = line.replace(oldlink, '%s" srcset="%s 1x, %s 2x' % (
+                    oldlink, oldlink, newlink))
+      new_raw_text.append(line)
+    raw_text = "\n".join(new_raw_text)
 
     raw_text = raw_text.replace('href="/', 'href="%s/' % SITE_URL)
     raw_text = raw_text.replace('src="/', 'src="%s/' % SITE_URL)
@@ -597,11 +658,11 @@ def start():
 
     text = "%s%s" % (beginning_text, ending_text)
 
+    beginning_text = re.sub('<a href=[^>]*><img src=', '<a href="' + link + '"><img src=', beginning_text)
+
     notyet = "notyet" in tags
     if notyet:
       tags.remove("notyet")
-
-    link = "%s/%s" % (P_URL, pretty_names[link_anchor])
 
     services = []
     for tag in tags:
@@ -621,10 +682,13 @@ def start():
       elif tag.startswith('lw/'):
         lw_link = "http://lesswrong.com/lw/%s" % token
         services.append((3, "lesswrong", "lw", lw_link, token))
+      elif tag.startswith('ea/'):
+        ea_link = "http://effective-altruism.com/ea/%s" % token
+        services.append((4, "e-a.com", "ea", ea_link, token))
       elif tag.startswith('r/'):
         subreddit, post_id = token.split('/')
         r_link = "http://www.reddit.com/r/%s/comments/%s" % (subreddit, post_id)
-        services.append((4, "r/%s" % subreddit, "r", r_link, token))
+        services.append((5, "r/%s" % subreddit, "r", r_link, token))
 
     # sort by and then strip off priorities
     services = [x[1:] for x in sorted(services)]
@@ -652,7 +716,7 @@ def start():
       rss_comments_note = ""
 
     if not notyet:
-      write_rss_item_begin(n, w_partial, w_full, title, link)
+      write_rss_item_begin(n, w_partial, w_full, title, link, tags)
 
     month, day, year = date.split()[1:4]
 
@@ -734,11 +798,20 @@ def start():
 
 
   for tag, item_list in tag_to_items.items():
+    if tag == "all":
+      rss_link = "http://www.jefftk.com/news.rss"
+    else:
+      rss_link = "http://www.jefftk.com/news/%s.rss" % tag
+    rss_link_tag = '<link rel=alternate type="application/rss+xml" title="RSS Feed" href="%s">' % rss_link
+
     t = open(os.path.join(OUT_DIR, "%s.html" % tag), "w").write
     t("<html>\n")
-    t("  <head><title>Jeff :: Posts :: %s</title>%s</head>\n" % (tag, meta_viewport(400)))
+    t("  <head><title>Jeff :: Posts :: %s</title>%s%s</head>\n" % (tag, meta_viewport(400), rss_link_tag))
     t('  <style>@media (max-width: 410px) {.headfoot { font-size: 10px; }} </style>')
-    t('  <body>%s<hr><h2>Posts :: %s</h2>\n<table border="0">\n' % (links_partial(), tag))
+
+
+
+    t('  <body>%s<hr><h2>Posts :: %s (<a href="%s">rss</a>)</h2>\n<table border="0">\n' % (links_partial(), tag, rss_link))
     for year, month, day, link, title in item_list:
       t('   <tr><td>%s<td>%s<td>%s<td><a href="%s">%s</a></tr>\n' % (
         year, month, day, link, title))
