@@ -8,6 +8,7 @@ from BeautifulSoup import BeautifulSoup
 import datetime
 from datetime import date, timedelta
 import calendar
+import readline
 
 WEBDIR="/home/jefftk/jtk"
 FUTURE_FNAME="%s/future.html" % WEBDIR
@@ -214,6 +215,7 @@ def write_index(before, table, after, fname=FUTURE_FNAME):
     outf.writelines(table)
     outf.writelines(after)
     outf.close()
+    os.chmod(fname, int("0666", 8))
 
 def parse_time(time):
    for f, r in (("ish", ""),
@@ -222,8 +224,8 @@ def parse_time(time):
                 ("afternoon", "2pm-5pm"),
                 ("evening", "6pm-10pm"),
                 ("dinner", "6pm-8pm"),
-                ("noon", "12am"),
-                ("midnight", "12pm")):
+                ("noon", "12pm"),
+                ("midnight", "12am")):
        time = time.replace(f, r)
 
    time = time.lower().strip()
@@ -272,7 +274,8 @@ def update_tz(descr, current_tz):
 
     return {"Eastern": "America/New_York",
             "Central": "America/Chicago",
-            "Pacific": "America/Los_Angeles"}[m.groups()[0]]
+            "Pacific": "America/Los_Angeles",
+            "Greenwich": "Europe/London"}[m.groups()[0]]
 
 def write_ical(out=CAL_FNAME):
         a,b,c = read_index(FUTURE_FNAME)
@@ -313,7 +316,7 @@ def write_ical(out=CAL_FNAME):
           w("END:VEVENT")
 
         w("END:VCALENDAR")
-        open(out, "w").writelines(lines)
+        open(out, "w").writelines(lines) 
 
 def write_org(out=ORG_FNAME):
         a,b,c = read_index(FUTURE_FNAME)
@@ -408,6 +411,8 @@ if __name__ == "__main__":
         print tidy_view([te for te in t if te[0] == table_entry[0]],
                          ind=3, nodate=True)
         write_index(a,unparse_table(t),c,FUTURE_FNAME)
+        write_ical()
+        print "... saved"
     elif sys.argv[1] == "view":
         a,b,c = read_index(FUTURE_FNAME)
         t=parse_table(b)
