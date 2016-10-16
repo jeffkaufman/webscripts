@@ -19,8 +19,8 @@ def posts_for(posts, post_number):
 def write_post(posts, post_number, header, footer):
     with open(rss_from(post_number), "w") as outf:
         header = header.replace(
-            "Jeff :: Posts",
-            "Jeff :: Posts back from post %s" % post_number)
+            "Blog Posts",
+            "Blog Posts back from post %s" % post_number)
         header = header.replace(
             "</description>",
             " from post %s back</description>" % post_number)
@@ -33,7 +33,7 @@ def write_post(posts, post_number, header, footer):
 
 def post_slug(post):
     try:
-        slug, = re.findall("<link>http://www.jefftk.com/p/([^<]+)</link>", post)
+        slug, = re.findall("<link>.*/p/([^<]+)</link>", post)
     except Exception:
         print repr(post)
         raise
@@ -52,11 +52,11 @@ def edit_in_reverse_rss_link(post_number, current_number, post_slug):
 
 def cateogrize_header(header, category, full):
     header = header.replace(
-        "Jeff :: Posts",
-        "Jeff :: Posts on %s" % category)
+        "Blog Posts",
+        "Blog Posts on %s" % category)
     header = header.replace(
         "</description>",
-        " posts on %s</description>" % category)
+        " on %s</description>" % category)
     header = header.replace(
         '<atom:link href="http://www.jefftk.com/news.rss"',
         '<atom:link href="http://www.jefftk.com/news/%s%s.rss"' % (
@@ -124,17 +124,19 @@ def start():
     for post_number, post in enumerate(posts):
         edit_in_reverse_rss_link(post_number, len(posts)-1, post_slug(post))
 
-    for fname in os.listdir("/home/jefftk/jtk/p/"):
-        if fname.endswith(".html"):
-            fname_long = "/home/jefftk/jtk/p/%s" % fname
-            if os.path.isfile(fname_long):
-                with open(fname_long) as inf:
-                    contents = inf.read()
-                contents = contents.replace("__REVERSE_RSS__",
-                                            "http://www.jefftk.com/news/2013-02-08")
-                with open(fname_long, "w") as outf:
-                    outf.write(contents)
+    def replace_in_file(fname_long):
+        if fname_long.endswith(".html") and os.path.isfile(fname_long):
+            with open(fname_long) as inf:
+                contents = inf.read()
+            contents = contents.replace("__REVERSE_RSS__",
+                                        "/news/2013-02-08")
+            with open(fname_long, "w") as outf:
+                outf.write(contents)
 
+    for fname in os.listdir("/home/jefftk/jtk/p/"):
+        replace_in_file("/home/jefftk/jtk/p/%s" % fname)
+    for fname in os.listdir("/home/jefftk/jtk/news/"):
+        replace_in_file("/home/jefftk/jtk/news/%s" % fname)
 
 if __name__ == "__main__":
     start()
