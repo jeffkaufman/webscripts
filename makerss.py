@@ -7,15 +7,14 @@ usage:
 
 import sys, os, re, random, shutil, stat
 
-SITE_URL="http://www.jefftk.com"
+SITE_URL="https://www.jefftk.com"
 SITE_DIR="/home/jefftk/jtk"
 IN_HTML="%s/news_raw.html" % SITE_DIR
 FRONT_PAGE="%s/index.html" % SITE_DIR
 FRONT_PAGE_TMP=FRONT_PAGE+"~"
 OUT_DIR="%s/news" % SITE_DIR
 P_DIR="%s/p" % SITE_DIR
-URL_DIR="%s/news" % SITE_URL
-P_URL="%s/p" % SITE_URL
+P_URL="/p"
 RSS_URL="%s/news.rss" % SITE_URL
 RSS_FNAME="%s/news.rss" % SITE_DIR
 
@@ -202,6 +201,8 @@ function service_abbr(service) {
     return 'g+';
   } else if (service == "lesswrong") {
     return 'lw';
+  } else if (service == "hacker news") {
+    return 'hn';
   } else if (service == "facebook") {
     return 'fb';
   } else {
@@ -353,9 +354,9 @@ def write_header(w, d=None):
   w('')
   w('  <channel>')
   w('    <atom:link href="%s" rel="self" type="application/rss+xml" />' % RSS_URL)
-  w("    <title>Jeff :: Posts</title>")
-  w("    <link>%s</link>" % URL_DIR)
-  w("    <description>Jeff Kaufman's Blog</description>")
+  w("    <title>Jeff Kaufman's Writing</title>")
+  w("    <link>http://www.jefftk.com/news/</link>")
+  w("    <description>Jeff Kaufman's Writing</description>")
   w("    <language>en-us</language>")
 
 def write_footer(w):
@@ -437,19 +438,47 @@ def title_to_url_component(s):
 
 pretty_names = {}
 titles = {}
+title_and_link = []
+title_and_link_index = {}
 with open(IN_HTML) as inf:
   for n, (link_anchor, date, title, raw_text, tags) \
         in enumerate(items(open(IN_HTML))):
     pretty_name = title_to_url_component(title)
-    
+
     if pretty_name in titles:
       raise Exception("'%s' for %s turns to %s which is a duplicate" % (
           title, link_anchor, pretty_name))
     titles[pretty_name] = 1
     pretty_names[link_anchor] = pretty_name
+    if "notyet" not in tags:
+      title_and_link_index[n] = len(title_and_link)
+      title_and_link.append((
+        title, "%s/%s" % (P_URL, pretty_name)))
 
-def best_posts():
+def best_posts(earlier, later):
   best = [
+    ('2016-06-20', 'Mike Mulligan and His Obsolete Technology'),
+    ('2016-06-15', 'Reading about guns'),
+    ('2016-02-26', 'Make Buses Dangerous'),
+    ('2016-01-16', 'Tiny House Movement'),
+    ('2015-11-29', 'Giving vs Doing'),
+    ('2015-11-20', 'Negative News'),
+    ('2015-11-09', 'Thoughtful Non-consumption'),
+    ('2015-10-20', 'How Bad Is Dairy?'),
+    ('2015-10-07', 'Mercury Spill'),
+    ('2015-08-11', 'Why Global Poverty?'),
+    ('2015-07-24', 'Lyme Disease By County'),
+    ('2015-06-27', 'Cheap College via Marrying'),
+    ('2015-06-17', 'Subway Synchronization Protocol'),
+    ('2015-05-14', 'Singular They FAQ'),
+    ('2015-04-12', 'Instantiating Arguments'),
+    ('2015-01-14', 'The Privilege of Earning To Give'),
+    ('2014-12-25', "We Haven't Uploaded Worms"),
+    ('2014-09-08', 'Policies'),
+    ('2014-08-25', 'Persistent Idealism'),
+    ('2014-07-14', 'The Economics of a Studio CD'),
+    ('2014-07-01', 'Preparing for our CD'),
+    ('2014-06-25', 'Optimizing Looks Weird'),
     ('2014-02-27', 'Playing to Lose'),
     ('2014-02-18', 'Dance Weekend and Festival Survey'),
     ('2014-01-26', 'Contra Dance Band Size'),
@@ -508,29 +537,38 @@ def best_posts():
 
   random.shuffle(best)
 
-  return '<p>Top Posts:</p><ul>%s</ul>' % (
-    "".join('<li style="margin-bottom: 0.5em;"><a href="%s/%s">%s</a>' % (
-        P_URL, pretty_names[post_date], post_title)
+  li_html = '<li style="margin-bottom: 0.5em;">'
+
+  best_posts_html = '<p>More Posts:</p><ul>%s</ul>' % (
+    "".join('%s<a href="%s/%s">%s</a>' % (
+        li_html, P_URL, pretty_names[post_date], post_title)
             for (post_date, post_title) in random.sample(best,5)))
 
+  for section, info in [("Older Post", earlier),
+                        ("Newer Post", later)]:
+    if info:
+      title, link = info
+      best_posts_html = "%s<p>%s:</p><ul>%s<a href='%s'>%s</a></ul>" % (
+        best_posts_html, section, li_html, link, title)
 
-def links_partial(tag_block=""):
+  return best_posts_html
+
+
+def links_partial():
   sep = '&nbsp;&nbsp;::&nbsp;&nbsp;'
   s = sep.join(
     ('<a href="/" rel="author">Jeff Kaufman</a>',
-     '<a href="/p/index">Blog Posts</a>',
-     '<a href="/news.rss">RSS Feed</a>',
-     '<a href="__REVERSE_RSS__">RSS Reverse Feed</a>',
-     '<a href="/contact">Contact</a>'))
-  if tag_block:
-    s += sep + "Tagged: " + tag_block
-
+     '<a href="/p/index">Posts</a>',
+     '<a href="/news.rss">RSS</a>',
+     # can't use rewind symbol because apple makes it ugly
+     '<span><a href="__REVERSE_RSS__">&#9666;&#9666;RSS</a>',
+     '</span><a href="/contact">Contact</a>'))
   s += "\n"
   return "<div class=headfoot>%s</div>" % s
 
-def write_links_footer(p, tag_block):
+def write_links_footer(p):
     p.write("  <hr>\n")
-    p.write(links_partial(tag_block))
+    p.write(links_partial())
     p.write('  </body></html>\n')
 
 def write_rss_item_begin(n, w_partial, w_full, title, link, tags):
@@ -541,7 +579,7 @@ def write_rss_item_begin(n, w_partial, w_full, title, link, tags):
     w('    <item>')
     w('      <guid>%s</guid>' % link)
     w("      <title>%s</title>" % title)
-    w("      <link>%s</link>" % link)
+    w("      <link>%s%s</link>" % (SITE_URL,link))
     for tag in sorted(tags):
       w("      <category>%s</category>" % tag)
 
@@ -571,9 +609,9 @@ def start():
   write_header(w_full)
 
   css = ('<style type="text/css">'
+         'img {width: 100%}'
          '.comment-thread {margin: 0px 0px 0px 30px;}'
-         '.date {float: right; display: block}'
-         '.content {max-width:560px;}'
+         '.content {max-width:550px;}'
          '.comment {max-width: 448px;'
          '          overflow: hidden;'
          '          overflow-wrap: break-word;'
@@ -589,30 +627,23 @@ def start():
          '              visibility: hidden;}'
          '.comment:hover .commentlink {visibility: visible}'
          '.highlighted {background-color: lightyellow;}'
-         '#top-posts { padding-left: 30px; }'
-         '@media (max-width: 850px) {'
-         '  #top-posts { padding-left: 5px; } }'
-         '@media (max-width: 800px) {'
-         '  #top-posts { display: none; }'
-         '  .headfoot { font-size: 24px; }'
-         '}'
-         '@media (max-width: 610px) {'
-         '  .content, .comment {'
-         '     font-size: 32px;'
-         '  }'
-         '  .date {'
-         '     font-size: 24px;'
-         '  }'
-         '}'
-         'html * {max-height:1000000px;} // disable font-boost'
+         '@media (min-width: 850px) {'
+         '  #top-posts { padding-left: 30px;'
+         '               position: absolute;'
+         '               top: 30px;'
+         '               left: 600px;'
+         '               max-width: 200px;}}'
+         '#title-date-tags { width: 100% }'
          '</style>')
 
   tag_to_items = {}
 
   front_page_list = []
 
+  all_posts = items(open(IN_HTML))
+
   for n, (link_anchor, date, title, raw_text, tags) \
-        in enumerate(items(open(IN_HTML))):
+        in enumerate(all_posts):
 
     link = "%s/%s" % (P_URL, pretty_names[link_anchor])
 
@@ -621,7 +652,7 @@ def start():
                                   'href="%s/%s' % (P_URL, new_name))
 
     raw_text = re.sub(r'href="(20\d\d-\d\d?-\d\d?)(["#])',
-                      r'href="%s/\1\2' % URL_DIR,
+                      r'href="/\1\2',
                       raw_text)
 
     new_raw_text = []
@@ -633,20 +664,22 @@ def start():
           if oldlink.startswith("/"):
             fname, ext = oldlink.rsplit(".", 1)
             if ext in ["jpg", "png"]:
-              newlink = "%s-2x.%s" % (fname, ext)
-              for suffix in ["-sm", "-small", "-tn"]:
-                if fname.endswith(suffix):
-                  newlink = "%s-2x.%s" % (fname[:-len(suffix)], ext)
-              newlink_ondisk = "%s%s" % (SITE_DIR, newlink)
-              if os.path.exists(newlink_ondisk):
-                #print "using %s as srcset for %s" % (newlink, oldlink)
-                line = line.replace(oldlink, '%s" srcset="%s 1x, %s 2x' % (
-                    oldlink, oldlink, newlink))
+              srcsets = []
+              for sizing in ["2x", "3x", "4x"]:
+                newlink = "%s-%s.%s" % (fname, sizing, ext)
+                for suffix in ["-sm", "-small", "-tn"]:
+                  if fname.endswith(suffix):
+                    newlink = "%s-%s.%s" % (fname[:-len(suffix)], sizing, ext)
+                newlink_ondisk = "%s%s" % (SITE_DIR, newlink)
+                if os.path.exists(newlink_ondisk):
+                  srcsets.append("%s %s" % (newlink, sizing))
+                  #print "  %s %s" % (newlink, sizing)
+              if srcsets:
+                srcset = ", ".join(srcsets)
+                #print "using %s as srcset for %s" % (srcset, oldlink)
+                line = line.replace(oldlink, '%s" srcset="%s' % (oldlink, srcset))
       new_raw_text.append(line)
     raw_text = "\n".join(new_raw_text)
-
-    raw_text = raw_text.replace('href="/', 'href="%s/' % SITE_URL)
-    raw_text = raw_text.replace('src="/', 'src="%s/' % SITE_URL)
 
     if "~~break~~" in raw_text:
       beginning_text, ending_text = raw_text.split("~~break~~")
@@ -677,7 +710,7 @@ def start():
           fb_link = "https://www.facebook.com/note.php?note_id=%s" % token
         else:
           token = token.replace("status/", "")
-          fb_link = "https://www.facebook.com/jefftk/posts/%s" % token
+          fb_link = "https://www.facebook.com/jefftk/posts/%s" % token.split("_")[-1]
         services.append((2, "facebook", "fb", fb_link, token))
       elif tag.startswith('lw/'):
         lw_link = "http://lesswrong.com/lw/%s" % token
@@ -689,29 +722,31 @@ def start():
         subreddit, post_id = token.split('/')
         r_link = "http://www.reddit.com/r/%s/comments/%s" % (subreddit, post_id)
         services.append((5, "r/%s" % subreddit, "r", r_link, token))
+      elif tag.startswith('hn/'):
+        services.append((6, "hacker news", "hn", 'https://news.ycombinator.com/item?id=%s' % token, token))
 
     # sort by and then strip off priorities
     services = [x[1:] for x in sorted(services)]
 
     tags = set(x for x in tags if '/' not in x)
 
-    no_tags_no_ws = re.sub('<[^>]*>', '', re.sub('\s+',' ',text)).strip()
+    no_tags_no_ws = re.sub('<[^>]*>', '', re.sub('\s+',' ',re.sub('<style>[^<]*</style>','',text))).strip()
     meta = ('<meta name="description" content="%s..." />' % quote(no_tags_no_ws[:400]) + " " +
-            '<meta name="keywords" content="%s" />' % quote(', '.join(tags)) + " " + 
-            meta_viewport(600))
+            '<meta name="keywords" content="%s" />' % quote(', '.join(tags)) + " " +
+            meta_viewport("device-width, initial-scale=1"))
 
     text = "<p>" + text
 
     tag_block = ""
     if tags:
       tag_block = ", ".join(
-        '<i><a href="%s/%s">%s</a></i>' % (URL_DIR, tag, tag)
+        '<i><a href="/news/%s">%s</a></i>' % (tag, tag)
         for tag in tags)
 
     if services:
       comments_links = ", ".join('<a href="%s">%s</a>' % (service_link, service_name)
                                  for (service_name, _, service_link, _) in services)
-      rss_comments_note = "<p><i>Comment on %s or write jeff@jefftk.com</i>" % comments_links
+      rss_comments_note = "<p><i>Comment on %s or write jeff.t.kaufman@gmail.com</i>" % comments_links
     else:
       rss_comments_note = ""
 
@@ -724,32 +759,27 @@ def start():
       t = text + rss_comments_note
       write_rss_item_end(n, w_partial, w_full, day, month, year, t)
 
-    day = str(int(day))
-    if day.endswith("1"):
-      fancy_day = day + "st"
-    elif day.endswith("2"):
-      fancy_day = day + "nd"
-    elif day.endswith("3"):
-      fancy_day = day + "rd"
-    else:
-      fancy_day = day + "th"
-      
-    fancy_date = "%s %s, %s" % (month, fancy_day, year)
-    title_and_body = ('<div class="content"><i class="date">%s</i><h3><a href="%s">%s</a>'
-                      '</h3>\n%s</div>\n' % (fancy_date, link, title, text))
+    if notyet:
+      text = "<i>draft post</i><p>%s" % text
 
     date_number_file = os.path.join(OUT_DIR, link_anchor + ".html")
     pretty_name_file = os.path.join(P_DIR, pretty_names[link_anchor] + ".html")
     per_file = open(date_number_file, "w")
 
     per_file.write("<html>\n")
-    per_file.write("  <head><title>%s</title>%s%s</head>\n" % (title, meta, css))
-    per_file.write('  <body>%s<hr><table><tr><td valign="top">%s<td valign="top"'
-                   '  id=top-posts>%s</table><p>' % (
-        links_partial(tag_block), title_and_body, best_posts()))
+    per_file.write("<head><title>%s</title>%s%s</head>\n" % (title, meta, css))
+
+    per_file.write('<body>%s</div><hr><div class="content">' % links_partial())
+    per_file.write('<table id=title-date-tags>')
+    per_file.write('<tr><td valign=top rowspan=2><h3><a href="%s">%s</a></h3>' % (
+      link, title))
+    fancy_date = "%s %s, %s" % (month, tidy_day(day), year)
+    per_file.write('    <td align=right valign=top>%s' % fancy_date)
+    per_file.write('<tr><td align=right valign=top>%s</table>' % tag_block)
+    per_file.write(text)
 
     if services:
-      per_file.write("Comment on %s or write jeff@jefftk.com.\n" % (
+      per_file.write("<p>Comment on %s or write jeff@jefftk.com.\n" % (
           ', '.join('<a href="%s">%s</a>' % (service_link, service_name)
                     for service_name, service_abbr, service_link, service_tag in services)))
       per_file.write('<div id="comments">')
@@ -761,7 +791,16 @@ def start():
       per_file.write('</script>')
       per_file.write('</div>')
 
-    write_links_footer(per_file, tag_block)
+    earlier, later = None, None
+    if n in title_and_link_index:
+      i = title_and_link_index[n]
+      if i+1 < len(title_and_link):
+        earlier = title_and_link[i+1]
+      if i-1 >= 0:
+        later = title_and_link[i-1]
+    per_file.write("<div id=top-posts>%s</div>" % best_posts(earlier, later))
+
+    write_links_footer(per_file)
     per_file.close()
 
     shutil.copy(date_number_file, pretty_name_file)
@@ -779,7 +818,7 @@ def start():
       w("<div class=blog-entry-beginning>")
       w("<p>")
       w(beginning_text)
-      
+
       if broke_text:
         w(" <a href='%s'>more...</a>" % link)
       else:
@@ -799,23 +838,45 @@ def start():
 
   for tag, item_list in tag_to_items.items():
     if tag == "all":
-      rss_link = "http://www.jefftk.com/news.rss"
+      rss_link = "/news.rss"
     else:
-      rss_link = "http://www.jefftk.com/news/%s.rss" % tag
+      rss_link = "/news/%s.rss" % tag
     rss_link_tag = '<link rel=alternate type="application/rss+xml" title="RSS Feed" href="%s">' % rss_link
 
     t = open(os.path.join(OUT_DIR, "%s.html" % tag), "w").write
     t("<html>\n")
-    t("  <head><title>Jeff :: Posts :: %s</title>%s%s</head>\n" % (tag, meta_viewport(400), rss_link_tag))
-    t('  <style>@media (max-width: 410px) {.headfoot { font-size: 10px; }} </style>')
+    if tag == "all":
+      page_title = "Blog Posts"
+    else:
+      page_title = "Posts tagged %s" % tag
 
+    t("  <head><title>%s</title>%s%s</head>\n" % (
+      page_title, meta_viewport("device-width, initial-scale=1"), rss_link_tag))
+    t('<style>'
+      '.headfoot { margin: 3px }'
+      'h2 { margin: .5em }'
+      'body { margin: 0; padding: 0}'
+      'li { list-style-type: none; margin: 0 }'
+      'li a { display: block; padding: .75em }'
+      'li a:link { text-decoration: none }'
+      '.title:hover { text-decoration: underline }'
+      'ul { margin: 0; padding: 0 }'
+      'li:nth-child(odd) {'
+      '  background: #EEE;'
+      '  background: linear-gradient(to right, #EEE 400px, #FFF 600px);'
+      '}'
+      '.date { font-size: 85% ; color: black }'
+      '</style>')
 
-
-    t('  <body>%s<hr><h2>Posts :: %s (<a href="%s">rss</a>)</h2>\n<table border="0">\n' % (links_partial(), tag, rss_link))
+    t('  <body>%s<hr><h2>Posts :: %s (<a href="%s">rss</a>)</h2>\n' % (
+      links_partial(), tag, rss_link))
+    t('  <ul>')
     for year, month, day, link, title in item_list:
-      t('   <tr><td>%s<td>%s<td>%s<td><a href="%s">%s</a></tr>\n' % (
-        year, month, day, link, title))
-    t('  </table>\n')
+      t('   <li><a href="%s">'
+        '       <div class=title>%s</div>'
+        '       <div class=date>%s %s, %s</div></a></li>\n' % (
+        link, title, month, day, year))
+    t('  </ul>\n')
     t('  <hr>%s\n' % links_partial())
     t('  </body>\n')
     t('</html>\n')
@@ -828,7 +889,9 @@ def start():
 def tidy_day(day):
   d = str(int(day))
   suffix = "th"
-  if d[-1] == '1':
+  if len(d) == 2 and d[0] == '1':
+    suffix = "th"
+  elif d[-1] == '1':
     suffix = "st"
   elif d[-1] == '2':
     suffix = "nd"
