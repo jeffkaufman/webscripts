@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import cgi
 import traceback
 import re
 import urllib
@@ -9,14 +10,13 @@ import os
 import sys
 import time
 import dateutil.parser
-sys.path.append(os.path.dirname(__file__))
+import Cookie
+import subprocess
+import base64
+from xml.dom import minidom
+from collections import defaultdict
 
-# This pulls in user-specific data.  Some examples:
-#
-# FB_POSTER_ID="jefftk"
-# GP_POSTER_ID="103013777355236494008"
-#
-# FB_CODE = get this from oauth for offline access.  Doesn't need any special permissions.
+sys.path.append(os.path.dirname(__file__))
 from private import *
 
 def unescape(s):
@@ -25,14 +25,18 @@ def unescape(s):
             .replace('&quot;', '"')
             .replace('&amp;', '&'))
 
-def slurp(url, data=None, headers={}):
+def slurp(url, data=None, headers={}, timeout=60):
     identifier = "Jeff Kaufman"
+    botname = "cross-comment"
     if "reddit" in url:
         identifier = "/u/cbr"
     elif "lesswrong" in url:
         identifier = "/user/jkaufman"
-    headers['User-Agent'] = 'cross-comment bot by %s (www.jefftk.com)' % identifier
-    return urllib2.urlopen(urllib2.Request(url, data, headers)).read()
+    if 'User-Agent' not in headers:
+        headers['User-Agent'] = '%s bot by %s (www.jefftk.com)' % (botname, identifier)
+
+    response = urllib2.urlopen(urllib2.Request(url, data, headers), None, timeout)
+    return response.read()
 
 # Google is using something that is almost, but not quite, json.  So take a strong from G+
 # and turn it into json so we can use the json parser
@@ -61,8 +65,35 @@ def gplus_loads(s):
 # I wrote the g+ code later, so it's properly object oriented.  This is only for g+.
 class Comment(object):
     def __init__(self, raw):
-        self.user = raw[1]
-        self.message = raw[2]
+        self.user = raw[-3][0]
+
+        message = []
+        for message_segment in raw[-1][-1]:
+            if message_segment[0] == 0:
+                # some text
+                message.append(escape(message_segment[1].replace(u"\ufeff", "")))
+            elif message_segment[0] == 1:
+                # newline
+                message.append("<br>")
+            elif message_segment[0] == 2:
+                # link
+                link = message_segment[1]
+                message.append('<a href="%s">%s</a>' % (escape(link), escape(link)))
+            elif message_segment[0] == 3:
+                # tag
+                user_link = "https://plus.google.com/%s" % escape(message_segment[4][1])
+                message.append('@<a href="%s">%s</a>' % (
+                    user_link, sanitize_name(message_segment[1])))
+            elif message_segment[0] == 4:
+                # hashtag
+                # don't bother linking
+                message.append(escape(message_segment[1]))
+            else:
+                import pprint
+                pprint.pprint(raw)
+                raise Exception("unknown message type %s" % message_segment[0])
+        self.message = "\n".join(message)
+
         self.anchor = raw[3]
         self.ts = raw[3]/1000
         self.user_id = raw[6]
@@ -104,85 +135,6 @@ def escape(s):
         s = s.replace(f,r)
     return s
 
-def comments(objtype, objid, gpid):
-    s = []
-
-    if gpid:
-        c, gplink = gpcomments(gpid)
-        s.extend(c)
-    else:
-        gplink = None
-
-    c, fblink = fbcomments(objtype, objid)
-    s.extend(c)
-
-    comment_request = '<a href="%s">facebook</a>' % fblink
-    if gplink:
-        comment_request = '<a href="%s">google plus</a>, %s,' % (gplink, comment_request)
-
-    s.append('<br>Comment on %s or write %s<br>' % (comment_request, EMAIL))
-    return 'document.write(%s);' % json.dumps("\n".join(s))
-
-def gpcomments(gpid):
-    p = Post(GP_POSTER_ID, gpid)
-    s = []
-
-    if p.comments:
-        s.append('Comments on <a href="%s">google plus</a>:' % p.link)
-        s.append('<blockquote>')
-        for comment in p.comments:
-            user_link = "https://plus.google.com/%s" % comment.user_id
-
-            s.append("<hr>")
-            s.append('<a name="gp-%s" href="%s">%s</a>:' % (
-                    comment.anchor, user_link, comment.user))
-            s.append("<p>%s</p>" % comment.message)
-
-        s.append('</blockquote>')
-
-    return s, p.link
-
-def fbcomments(objtype, objid):
-    if objtype == "note":
-        post_link = "https://www.facebook.com/note.php?note_id=%s" % objid
-    elif objtype == "status":
-        post_link = "https://www.facebook.com/%s/posts/%s" % (FB_POSTER_ID, objid)
-    else:
-        assert False
-
-    fullurl = "%s/%s/comments?access_token=%s" % (
-        "https://graph.facebook.com/", objid, FB_CODE)
-    response = json.loads(slurp(fullurl))
-
-    s = []
-
-    if "data" in response and response["data"]:
-
-        s.append('Comments on <a href="%s">facebook</a>:' % post_link)
-        s.append('<blockquote>')
-        for comment in response["data"]:
-            name = escape(comment["from"]["name"])
-            user_id=escape(comment["from"]["id"])
-            anchor=escape(comment["id"])
-
-            if str(user_id) in FB_SHOW_BLACKLIST:
-                continue
-            elif str(user_id) in FB_LINK_BLACKLIST:
-                user_link = "#"
-            else:
-                user_link = "https://www.facebook.com/profile.php?id=%s" % user_id
-
-            s.append("<hr>")
-            s.append('<a name="fb-%s" href="%s">%s</a>:' % (anchor, user_link, name))
-
-            s.append("<p>%s</p>" % escape(comment["message"]).replace("\n\n", "\n<p>"))
-
-        s.append('</blockquote>')
-
-    return s, post_link
-
-# There's also stuff in here for pulling data from google analytics,
-# which I don't use any more, and latitude, which I do.
 
 def refresh_token_helper(refresh_token, client_id, client_secret):
     token_url = "https://accounts.google.com/o/oauth2/token"
@@ -207,87 +159,10 @@ def lat_refresh_token():
         client_id=L_CLIENT_ID,
         client_secret=L_CLIENT_SECRET)
 
-def current_location(key):
-    url = 'https://www.googleapis.com/latitude/v1/currentLocation?granularity=best'
-    headers = { "Authorization": "OAuth " + key }
-
-    j = json.loads(slurp(url, None, headers))
-    d = j["data"]
-    assert d["kind"] == "latitude#location"
-    return d["latitude"], d["longitude"]
-
-def distance(p1, p2):
-    lat_1, lon_1 = p1
-    lat_2, lon_2 = p2
-
-    lat_1, lon_1 = math.radians(float(lat_1)), math.radians(float(lon_1))
-    lat_2, lon_2 = math.radians(float(lat_2)), math.radians(float(lon_2))
-
-    r = 3963 # radius of the earth in miles
-    return math.acos(math.sin(lat_1)*math.sin(lat_2) +
-                     math.cos(lat_1)*math.cos(lat_2)*math.cos(lon_1-lon_2))*r
-
-def city(lat, lon, distance_from_home):
-    url = "http://maps.googleapis.com/maps/api/geocode/json?latlng=%s,%s&sensor=false" % (
-        lat, lon)
-    j = json.loads(urllib2.urlopen(url).read())
-    assert j["status"] == "OK"
-
-    ac = j["results"][0]["address_components"]
-
-    city = None
-    state = None
-    for a in ac:
-        if 'locality' in a["types"]:
-            city = a["short_name"]
-        elif 'administrative_area_level_1' in a["types"]:
-            state = a["short_name"]
-
-    if city:
-        if distance_from_home < 50:
-            return city
-        else:
-            return "%s %s" % (city, state)
-
-    raise Exception("none found")
-
-def neat_location(lat, lon):
-    distances = [(distance(k_loc, (lat, lon)), k_name)
-                 for (k_name, k_loc) in KNOWN_LOCATIONS.items()]
-    distances.sort()
-
-    best_distance, best_name = distances[0]
-
-    if best_distance < 0.25:
-        return best_name
-
-    try:
-        return city(lat, lon, distance(KNOWN_LOCATIONS['Home'], (lat, lon)))
-    except Exception:
-        pass
-
-    return "somewhere unknown"
-
-def location(s):
-    access_token = lat_refresh_token()
-    current_latlon = current_location(access_token)
-
-    if s == "raw":
-        return unsupported # "%s, %s" % current_latlon
-    elif s == "plain":
-        return neat_location(*current_latlon)
-    elif s == "neat":
-        map_url=MAP_URL
-
-        txt = '<a href="%s">%s</a> (via GPS)' % (
-            map_url, neat_location(*current_latlon))
-        return "document.getElementById('location').innerHTML = %s;" % json.dumps(txt)
-
-    return "Unknown request for location '%s'" % s
 
 def service_gp(gpid):
     p = Post(GP_POSTER_ID, gpid)
-    return [(comment.user,
+    return [(sanitize_name(comment.user),
              comment.user_link(),
              "gp-%s" % comment.anchor,
              "<p>%s</p>" % comment.message,
@@ -300,10 +175,37 @@ def epoch(timestring):
                             .astimezone(dateutil.tz.tzlocal())
                             .timetuple()))
 
+def sanitize_name(name):
+    name = INITIALS.get(name, name)
+    name = name.split()[0]
+    return name
+
 def service_fb(objid):
-    fullurl = "%s/%s/comments?access_token=%s&limit=80" % (
-        "https://graph.facebook.com/", objid, FB_CODE)
-    response = json.loads(slurp(fullurl))
+    if not objid.startswith("4102153_"):
+        objid = "4102153_" + objid
+
+    def collect_comments(url):
+        response = json.loads(slurp(url))
+        if "data" not in response or not response["data"]:
+            return []
+        data = response["data"]
+        if "paging" in response and "next" in response["paging"]:
+            data.extend(collect_comments(response["paging"]["next"]))
+        return data
+
+    # debug with https://www.jefftk.com/p/conversation-with-gleb-of-intentional-insights#fb-805642967912_805768436472
+    def resolve_replies(comments):
+        for comment in comments:
+            if "comments" in comment:
+                response = comment["comments"]
+                if "paging" in response and "next" in response["paging"]:
+                    response["data"].extend(collect_comments(response["paging"]["next"]))
+
+    # could do up to &limit=80 here, but following next= links is better
+    fullurl = "%s/%s/comments?access_token=%s&fields=created_time,from,message,id,comments" % (
+        "https://graph.facebook.com/v2.8", objid, FB_CODE)
+    comments = collect_comments(fullurl)
+    resolve_replies(comments)
 
     def anchor(comment):
         return escape(comment["id"])
@@ -315,7 +217,7 @@ def service_fb(objid):
         return str(user_id(comment)) in FB_SHOW_BLACKLIST
 
     def name(comment):
-        return comment["from"]["name"]
+        return sanitize_name(comment["from"]["name"])
 
     def message(comment):
         return escape(comment["message"]).replace("\n\n", "\n<p>")
@@ -327,22 +229,32 @@ def service_fb(objid):
         if str(user_id(comment)) in FB_LINK_BLACKLIST:
             return '#'
         return "https://www.facebook.com/%s/posts/%s?comment_id=%s" % (
-            FB_POSTER_ID, objid, comment_id(comment))
+            FB_POSTER_ID, objid.split("_")[-1], comment_id(comment))
         # return "https://www.facebook.com/profile.php?id=%s" % user_id(comment)
-
-    if "data" not in response or not response["data"]:
-        return []
 
     def ts(comment):
         return epoch(comment['created_time'])
 
-    return [(name(comment),
-             user_link(comment),
-             "fb-%s" % anchor(comment),
-             message(comment),
-             ts(comment))
-            for comment in response["data"]
-            if not skip(comment)]
+    out = []
+
+    def to_tuple(comment):
+        return (name(comment),
+                user_link(comment),
+                "fb-%s" % anchor(comment),
+                message(comment),
+                ts(comment),
+                []) # replies
+
+    for comment in comments:
+        if not skip(comment):
+            t = to_tuple(comment)
+            if "comments" in comment:
+                for reply in comment["comments"]["data"]:
+                    if not skip(reply):
+                        t[-1].append(to_tuple(reply))
+            out.append(t)
+
+    return out
 
 def parse_reddit_style_json_comment(raw_comment, url):
     raw_comment = raw_comment["data"]
@@ -360,7 +272,7 @@ def parse_reddit_style_json_comment(raw_comment, url):
             unescape(raw_comment["body_html"]).replace("<a href=", "<a rel=nofollow href="),
             int(raw_comment["created_utc"]),
             children]
-            
+
 def pull_reddit_style_json(url):
     # returns nested comments
     j = json.loads(slurp(url))
@@ -371,6 +283,95 @@ def pull_reddit_style_json(url):
     raw_comments = j[1]["data"]["children"]
     return [parse_reddit_style_json_comment(raw_comment, url)
             for raw_comment in raw_comments]
+
+BEGIN_HN_COMMENT='<span class="comment">'
+END_HN_COMMENT="</span>"
+def pull_hn_comments(url):
+  html = slurp(url).split("\n")
+
+  comments = []
+
+  current_indent = 0
+  comment_so_far = []
+  in_comment = False
+  prevous_line = ""
+  for line in html:
+    line = line.strip().replace("</span></div><br>", "")
+
+    indentations = re.findall(
+        '<img src="s.gif" height="1" width="([0-9]+)">', line)
+    if indentations:
+        indentation = indentations[-1]
+
+    if line.startswith(BEGIN_HN_COMMENT):
+      assert not in_comment
+      in_comment = True
+      line = line.replace(BEGIN_HN_COMMENT, "")
+
+      if indentation is not None:
+        current_indent = int(indentation)
+
+        assert current_indent % 40 == 0
+        current_indent = current_indent / 40
+      else:
+        current_indent = 0
+
+      potential_user_info = []
+      for a_matcher in ["([^<]*)", "<font[^>]*>([^<]*)</font>"]:
+        potential_user_info = re.findall(
+          '<a href="[^"]*">%s</a> <a href="([^"]*)">([\\d]*) (year|day|hour|minute|second)s? ago</a>' % a_matcher, previous_line)
+        if potential_user_info:
+           username, link_suffix, time_ago, time_units = potential_user_info[0]
+           break
+      if not potential_user_info:
+        print previous_line
+        raise Exception
+
+    if in_comment:
+      if END_HN_COMMENT not in line:
+        comment_so_far.append(line)
+      else:
+        in_comment = False
+        comment_so_far.append(line.split(END_HN_COMMENT)[0])
+
+        comments.append((current_indent, "\n".join(comment_so_far), username, time_ago, time_units, link_suffix))
+        comment_so_far = []
+    previous_line = line
+
+  threaded_comments = []
+  for indent, comment, username, time_ago, time_units, link_suffix in comments:
+    append_to = threaded_comments
+    for i in range(indent):
+      # find the last comment in the list, prepare to append to its comment section
+      append_to = append_to[-1][-1]
+    append_to.append([
+        username,
+        "https://news.ycombinator.com/%s" % link_suffix,
+        link_suffix.split("=")[-1],
+        comment,
+        timedelta_to_epoch(int(time_ago), time_units),
+        []])
+  return threaded_comments
+
+def timedelta_to_epoch(time_ago, time_units):
+  unit_table = {"second": 0,
+                "minute": 1,
+                "hour": 2,
+                "day": 3,
+                "year": 4}
+  unit = unit_table[time_units]
+  if unit >= unit_table["minute"]:
+    time_ago *= 60
+  if unit >= unit_table["hour"]:
+    time_ago *= 60
+  if unit >= unit_table["day"]:
+    time_ago *= 24
+  if unit >= unit_table["day"]:
+    time_ago *= 24
+  if unit >= unit_table["year"]:
+    time_ago *= 365
+
+  return int(time.time())-time_ago
 
 def pull_reddit_style_rss(url):
     def pull_tag(item, tag):
@@ -437,6 +438,14 @@ def service_lw(token):
     url = "http://lesswrong.com/lw/%s.rss" % token
     return pull_reddit_style_rss(url)
 
+def service_ea(token):
+    m = re.match('^[a-zA-Z0-9]+$', token)
+    if not m:
+        return []
+
+    url = "http://effective-altruism.com/ea/%s.rss" % token
+    return pull_reddit_style_rss(url)
+
 def service_r(token):
     m = re.match('^[a-zA-Z0-9]+/[a-zA-Z0-9]+$', token)
     if not m:
@@ -446,6 +455,10 @@ def service_r(token):
 
     url = "http://www.reddit.com/r/%s/comments/%s.json" % (subreddit, post_id)
     return pull_reddit_style_json(url)
+
+def service_hn(token):
+  url = "https://news.ycombinator.com/item?id=%s" % token
+  return pull_hn_comments(url)
 
 def cacher(cache_only, fn, service, arg):
     import memcache
@@ -463,30 +476,47 @@ def cacher(cache_only, fn, service, arg):
     if cache_only:
         return fn_value
 
-    # cache for 5min
-    if time.time()-t > 5*60:
-        fn_value = fn(arg)
-        mc.set(key, json.dumps([time.time(), fn_value]))
+    # cache is still fresh
+    if time.time()-t < 5*60:
+        return fn_value
 
-    # ideally we could serve stale data while kicking off a background
-    # thread, but we're not that sophisticated.
+    # check the filesystem
+    this_dir = os.path.dirname(os.path.abspath(__file__))
+    assert service.isalnum()
+    service_dir = os.path.join(this_dir, "comment-archive", service)
+    if not os.path.exists(service_dir):
+        os.mkdir(service_dir)
+    no_slash_arg = arg.replace("/", "_")
+    assert no_slash_arg.replace("_","").isalnum()
+    archive_fn = os.path.join(service_dir, no_slash_arg + ".json")
+    if os.path.exists(archive_fn):
+        with open(archive_fn) as inf:
+            fn_value = json.loads(inf.read())
+    else:
+        # Fall back to pulling from the service.  Ideally we could
+        # serve stale data while kicking off a background thread, but
+        # we're not that sophisticated.
+        fn_value = fn(arg)
+
+        # Save a backup.  We don't use these, but they'll be nice to
+        # have if something goes wrong.
+        if fn_value:  # Don't bother saving [].
+            with open(archive_fn + ".save", "w") as outf:
+                outf.write(json.dumps(fn_value))
+                outf.write("\n")
+
+    mc.set(key, json.dumps([time.time(), fn_value]))
+
     return fn_value
 
 # actually respond to the request
 # raising errors here will give a 500 and put the traceback in the body
 def start(environ, start_response):
     path = environ["PATH_INFO"]
-    if path.startswith("/comments/"):
-        # old-style requests, probably could delete this now
-        m = re.match("^/comments/([a-z]+)/([0-9]+)(/[A-Za-z0-9]+)?$", path)
-        if m:
-            objtype, objid, gpid = m.groups()
-            if gpid:
-                gpid = gpid.replace("/", "")
+    if path.startswith("/wsgi/"):
+      path = path[len("/wsgi"):]
 
-            if objtype in ["note", "status"]:
-                return comments(objtype, objid, gpid)
-    elif path.startswith("/json-comments"):
+    if path.startswith("/json-comments"):
         _, path_initial, service, token = path.split("/", 3)
         service_fn = None
         if service == "gp":
@@ -495,48 +525,94 @@ def start(environ, start_response):
             service_fn = service_fb
         elif service == "lw":
             service_fn = service_lw
+        elif service == "ea":
+            service_fn = service_ea
         elif service == "r":
             service_fn = service_r
+        elif service == "hn":
+            service_fn = service_hn
+
+        if path_initial == "json-comments-nocache":
+            return json.dumps(service_fn(token))
 
         cache_only = {"json-comments": False,
                       "json-comments-cached": True}[path_initial]
 
         if service_fn:
             return json.dumps(cacher(cache_only, service_fn, service, token))
-    elif path.startswith("/location/"):
-        return location(path.replace("/location/",""))
-    elif path.startswith("/pageviews"):
-        return most_viewed_posts()
 
-    return "\n".join(("usage:",
-                      "  /comments/[note|status]/[fbgraphid]/[g+id]",
-                      "  /json-comments/service/service-token",
-                      "  /location/raw",
-                      "  /location/neat",
-                      ))
+    return "not supported"
 
 
-#   sets up db cursor, wraps some error checking, runs start
 def application(environ, start_response):
+    raw = False
     try:
         output = start(environ, start_response)
+        code = None
         if output is None:
             output = ''
-        start_response('200 OK', [('content-type', 'text/javascript')])
+        if type(output) == type([]):
+          code, output = output
+        if code == "already started":
+          pass # nothing needs doing
+        elif code == "html":
+          start_response('200 OK', [('content-type', 'text/html')])
+        elif code == "htmlraw":
+          start_response('200 OK', [('content-type', 'text/html')])
+          raw = True
+        else:
+          start_response('200 OK', [('content-type', 'text/javascript')])
     except Exception, e:
         output = die500(start_response, e)
 
-    return (output.encode('utf8'), )
+    if not raw:
+        output = output.encode('utf8')
 
-# if we're run on our own, run as a server
-#   see server.sh for the wrapping
-if __name__ == "__main__":
+    return (output, )
+
+def server():
     from wsgiref.simple_server import make_server
-    import paste.reloader
-
-    # whenever this file or its imports change, paste.reloader will
-    # make us exit so our wrapper can restart us
-    paste.reloader.install()
 
     # run on port 8010
     make_server('',8010,application).serve_forever()
+
+def recalculate_fb_token():
+    redirect_url = "http://www.jefftk.com/"
+
+    print "We need to regenerate a long-lived access token for facebook"
+    print "Load the following URL in your browser:"
+    url = ("https://www.facebook.com/dialog/oauth?"
+           "client_id=%s"
+           "&scope=public_profile,basic_info,user_posts,user_managed_groups,user_friends"
+           "&redirect_uri=%s") % (FB_APP_ID, redirect_url)
+    print " ", url
+    print "paste the full url it redirects you to press enter"
+    r = raw_input("> ")
+    fb_code = re.findall('code=([^#]*)#_=_$', r)[0]
+
+    def slurp_access_token(url):
+        r = urllib2.urlopen(urllib2.Request(url)).read()
+        return dict(x.split('=') for x in r.split('&'))['access_token']
+
+    short_lived_token = slurp_access_token(
+        "https://graph.facebook.com/oauth/access_token?"
+        "client_id=%s"
+        "&redirect_uri=%s"
+        "&client_secret=%s"
+        "&code=%s" % (FB_APP_ID, redirect_url, FB_APP_SECRET, fb_code))
+
+    long_lived_token = slurp_access_token(
+        "https://graph.facebook.com/oauth/access_token?"
+        "client_id=%s&"
+        "client_secret=%s&"
+        "grant_type=fb_exchange_token&"
+        "fb_exchange_token=%s" % (FB_APP_ID, FB_APP_SECRET, short_lived_token))
+
+    print "Set:"
+    print "  FB_CODE='%s'" % long_lived_token
+
+    print "Then restart uwsgi: sudo service uwsgi restart"
+
+if __name__ == "__main__":
+    {"server": server,
+     "fbtoken": recalculate_fb_token}[sys.argv[1]]()
