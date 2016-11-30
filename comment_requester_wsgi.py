@@ -65,10 +65,12 @@ def gplus_loads(s):
 # I wrote the g+ code later, so it's properly object oriented.  This is only for g+.
 class Comment(object):
     def __init__(self, raw):
-        self.user = raw[-3][0]
+        self.user_id = raw[6]
+        assert self.user_id == raw[25][1]
+        self.user = raw[25][0]
 
         message = []
-        for message_segment in raw[-1][-1]:
+        for message_segment in raw[27][-1]:
             if message_segment[0] == 0:
                 # some text
                 message.append(escape(message_segment[1].replace(u"\ufeff", "")))
@@ -77,7 +79,7 @@ class Comment(object):
                 message.append("<br>")
             elif message_segment[0] == 2:
                 # link
-                link = message_segment[1]
+                link = message_segment[3][0]
                 message.append('<a href="%s">%s</a>' % (escape(link), escape(link)))
             elif message_segment[0] == 3:
                 # tag
@@ -96,7 +98,6 @@ class Comment(object):
 
         self.anchor = raw[3]
         self.ts = raw[3]/1000
-        self.user_id = raw[6]
 
     def user_link(self):
         return "https://plus.google.com/%s" % self.user_id
@@ -109,6 +110,7 @@ class Post(object):
 
         r = gplus_loads(slurp(fullurl))
         assert len(r) >= 1
+
         r = r[0]
 
         assert r[0] == "os.u"
@@ -162,11 +164,11 @@ def lat_refresh_token():
 
 def service_gp(gpid):
     p = Post(GP_POSTER_ID, gpid)
-    return [(sanitize_name(comment.user),
+    return [[sanitize_name(comment.user),
              comment.user_link(),
              "gp-%s" % comment.anchor,
              "<p>%s</p>" % comment.message,
-             comment.ts)
+             comment.ts]
             for comment in p.comments]
 
 def epoch(timestring):
