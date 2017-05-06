@@ -614,7 +614,7 @@ def recalculate_fb_token():
 
     def slurp_access_token(url):
         r = urllib2.urlopen(urllib2.Request(url)).read()
-        return dict(x.split('=') for x in r.split('&'))['access_token']
+        return json.loads(r)['access_token']
 
     short_lived_token = slurp_access_token(
         "https://graph.facebook.com/oauth/access_token?"
