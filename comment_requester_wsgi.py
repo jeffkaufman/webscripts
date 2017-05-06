@@ -633,7 +633,7 @@ def recalculate_fb_token():
     print "Set:"
     print "  FB_CODE='%s'" % long_lived_token
 
-    print "Then restart uwsgi: sudo service uwsgi restart"
+    print "Then restart uwsgi: sudo service uwsgi-comments restart"
 
 if __name__ == "__main__":
     {"server": server,
