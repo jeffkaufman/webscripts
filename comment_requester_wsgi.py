@@ -161,15 +161,31 @@ def lat_refresh_token():
         client_id=L_CLIENT_ID,
         client_secret=L_CLIENT_SECRET)
 
+def sanitize_names_extended(comments, raw_names):
+    for a, b in INITIALS.items(): raw_names[a] = b
+
+    for comment in comments:
+        for raw_name, sanitized_name in raw_names.items():
+            comment[3] = comment[3].replace(raw_name, sanitized_name)
+            if raw_name in comment[3]:
+                print raw_name
+            if len(comment) > 5 and comment[5]:
+                comment[5] = sanitize_names_extended(comment[5], raw_names)
+    return comments
 
 def service_gp(gpid):
     p = Post(GP_POSTER_ID, gpid)
-    return [[sanitize_name(comment.user),
-             comment.user_link(),
-             "gp-%s" % comment.anchor,
-             "<p>%s</p>" % comment.message,
-             comment.ts]
-            for comment in p.comments]
+    raw_names = {}
+    out = []
+    for comment in p.comments:
+        out.append([sanitize_name(comment.user),
+                    comment.user_link(),
+                    "gp-%s" % comment.anchor,
+                    "<p>%s</p>" % comment.message,
+                    comment.ts])
+        raw_names[comment.user] = sanitize_name(comment.user)
+    return sanitize_names_extended(out, raw_names)
+
 
 def epoch(timestring):
     return int(time.mktime(
@@ -218,8 +234,11 @@ def service_fb(objid):
     def skip(comment):
         return str(user_id(comment)) in FB_SHOW_BLACKLIST
 
+    def raw_name(comment):
+        return comment["from"]["name"]
+
     def name(comment):
-        return sanitize_name(comment["from"]["name"])
+        return sanitize_name(raw_name(comment))
 
     def message(comment):
         return escape(comment["message"]).replace("\n\n", "\n<p>")
@@ -238,25 +257,26 @@ def service_fb(objid):
         return epoch(comment['created_time'])
 
     out = []
+    raw_names = {}
 
-    def to_tuple(comment):
-        return (name(comment),
+    def to_list(comment):
+        raw_names[raw_name(comment)] = name(comment)
+        return [name(comment),
                 user_link(comment),
                 "fb-%s" % anchor(comment),
                 message(comment),
                 ts(comment),
-                []) # replies
+                []] # replies
 
     for comment in comments:
         if not skip(comment):
-            t = to_tuple(comment)
+            l = to_list(comment)
             if "comments" in comment:
                 for reply in comment["comments"]["data"]:
                     if not skip(reply):
-                        t[-1].append(to_tuple(reply))
-            out.append(t)
-
-    return out
+                        l[-1].append(to_list(reply))
+            out.append(l)
+    return sanitize_names_extended(out, raw_names)
 
 def parse_reddit_style_json_comment(raw_comment, url):
     raw_comment = raw_comment["data"]
