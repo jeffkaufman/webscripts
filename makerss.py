@@ -435,6 +435,11 @@ def title_to_url_component(s):
   s = re.sub("-*$", "", s)
   return s
 
+def make_link(pretty_name):
+  return "%s/%s" % (P_URL, pretty_name)
+
+updates = []
+
 pretty_names = {}
 titles = {}
 title_and_link = []
@@ -453,6 +458,23 @@ with open(IN_HTML) as inf:
       title_and_link_index[n] = len(title_and_link)
       title_and_link.append((
         title, "%s/%s" % (P_URL, pretty_name)))
+
+    for match in re.findall(r'<b>Update \d\d\d\d-\d\d-\d\d</b>.{0,300}',
+                            raw_text, re.DOTALL):
+
+      update_slug, = re.match(r'<b>Update (\d\d\d\d-\d\d-\d\d)</b>',
+                              match).groups()
+      update_anchor = 'update-%s' % update_slug
+
+      beginning, end = match.split('</b>', 1)
+
+      update_text = beginning + '</b>' + end.split('<')[0] + '...'
+
+      update_link = '%s#%s' % (make_link(pretty_name), update_anchor)
+
+      updates.append((update_slug, update_link, update_text))
+
+updates.sort(reverse=True)
 
 def best_posts(earlier, later):
   best = [
@@ -610,6 +632,13 @@ def start():
   write_header(w_partial)
   write_header(w_full)
 
+  for updates_n, (update_slug, update_link, update_text) in enumerate(updates):
+    write_rss_item_begin(updates_n, w_partial, w_full,
+                         'Update %s' % update_slug,
+                         update_link, ['update_rss'])
+    write_rss_item_end(updates_n, w_partial, w_full,
+                       update_slug, '', '', update_text)
+
   css = ('<style type="text/css">'
          'img {width: 100%}'
          '.comment-thread {margin: 0px 0px 0px 30px;}'
@@ -647,12 +676,12 @@ def start():
   prev_pretty_name=""
   cur_pretty_name=""
   printed_most_recent=False
-  
+
   for n, (link_anchor, date, title, raw_text, tags) \
       in enumerate(all_posts):
     prev_pretty_name = cur_pretty_name
     cur_pretty_name=pretty_names[link_anchor]
-    link = "%s/%s" % (P_URL, cur_pretty_name)
+    link = make_link(cur_pretty_name)
 
     for (f, r) in [("’", "'"),
                    ("‘", "'"),
