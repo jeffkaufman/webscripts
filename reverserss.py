@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 FEED_POSTS = 5
 import re
 import os
