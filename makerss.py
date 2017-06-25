@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 """
 usage:
 
@@ -14,6 +17,10 @@ FRONT_PAGE="%s/index.html" % SITE_DIR
 FRONT_PAGE_TMP=FRONT_PAGE+"~"
 OUT_DIR="%s/news" % SITE_DIR
 P_DIR="%s/p" % SITE_DIR
+NEW_OUT_DIR="%s/news-new" % SITE_DIR
+NEW_P_DIR="%s/p-new" % SITE_DIR
+PREV_OUT_DIR="%s/news-prev" % SITE_DIR
+PREV_P_DIR="%s/p-prev" % SITE_DIR
 P_URL="/p"
 RSS_URL="%s/news.rss" % SITE_URL
 RSS_FNAME="%s/news.rss" % SITE_DIR
@@ -340,14 +347,6 @@ def edit_front_page(front_page_list):
 def quote(s):
   return s.replace("&", "&amp;").replace("<","&lt;").replace(">", "&gt;").replace('"', '&quot;')
 
-def clear_news():
-  for x in os.listdir(OUT_DIR):
-    if x.endswith(".html"):
-      os.remove(os.path.join(OUT_DIR,x))
-  for x in os.listdir(P_DIR):
-    if x.endswith(".html"):
-      os.remove(os.path.join(P_DIR,x))
-
 def write_header(w, d=None):
   w('<?xml version="1.0" encoding="ISO-8859-1" ?>')
   w('<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">')
@@ -371,21 +370,19 @@ def items(s):
 
   cur_item = []
 
-  def no_title():
-    return len(cur_item) == 2
+  found_title = False
 
   def sendout():
-    if no_title():
+    if not found_title:
       cur_item.append("untitled")
     cur_item.append("".join(cur_text))
     cur_item.append(set(cur_tags))
-    for z in cur_text[:]:
-      cur_text.remove(z)
     x = cur_item[:]
-    for z in x:
-      cur_item.remove(z)
-    for z in cur_tags[:]:
-      cur_tags.remove(z)
+
+    del cur_item[:]
+    del cur_text[:]
+    del cur_tags[:]
+
     return x
 
   cur_text = []
@@ -396,6 +393,7 @@ def items(s):
     if match:
       if cur_item:
         yield sendout()
+        found_title = False
 
       link_anchor, date = match.groups()
       cur_item.append(link_anchor)
@@ -405,10 +403,11 @@ def items(s):
       pass
 
     else:
-      if no_title():
+      if not found_title:
         match = TITLE_RE.search(line)
         if match:
           cur_item.append(match.groups()[0])
+          found_title = True
           continue
 
       tags_match = TAGS_RE.search(line)
@@ -601,9 +600,12 @@ def start():
   def w_full(s):
     rss_full_out.write(s + "\n")
 
-  clear_news()
-  os.symlink("%s/all.html" % OUT_DIR, "%s/index.html" % OUT_DIR)
-  os.symlink("%s/all.html" % OUT_DIR, "%s/index.html" % P_DIR)
+  # delete old staging dirs
+  for d in [NEW_OUT_DIR, NEW_P_DIR, PREV_OUT_DIR, PREV_P_DIR]:
+    if os.path.exists(d):
+      shutil.rmtree(d)
+  os.mkdir(NEW_OUT_DIR)
+  os.mkdir(NEW_P_DIR)
 
   write_header(w_partial)
   write_header(w_full)
@@ -642,17 +644,24 @@ def start():
 
   all_posts = items(open(IN_HTML))
 
+  prev_pretty_name=""
+  cur_pretty_name=""
+  printed_most_recent=False
+  
   for n, (link_anchor, date, title, raw_text, tags) \
-        in enumerate(all_posts):
+      in enumerate(all_posts):
+    prev_pretty_name = cur_pretty_name
+    cur_pretty_name=pretty_names[link_anchor]
+    link = "%s/%s" % (P_URL, cur_pretty_name)
 
-    link = "%s/%s" % (P_URL, pretty_names[link_anchor])
+    for (f, r) in [("’", "'"),
+                   ("‘", "'"),
+                   ('“', '"'),
+                   ('”', '"')]:
+      raw_text = raw_text.replace(f, r)
 
-    for old_name, new_name in pretty_names.iteritems():
-      raw_text = raw_text.replace('href="%s' % old_name,
-                                  'href="%s/%s' % (P_URL, new_name))
-
-    raw_text = re.sub(r'href="(20\d\d-\d\d?-\d\d?)(["#])',
-                      r'href="/\1\2',
+    raw_text = re.sub(r'<b>Update (\d\d\d\d-\d\d-\d\d)</b>',
+                      r'<a name="update-\1"></a><b>Update \1</b>',
                       raw_text)
 
     new_raw_text = []
@@ -667,7 +676,7 @@ def start():
               srcsets = []
               for sizing in ["2x", "3x", "4x"]:
                 newlink = "%s-%s.%s" % (fname, sizing, ext)
-                for suffix in ["-sm", "-small", "-tn"]:
+                for suffix in ["-sm", "-small", "-tn", "-1x"]:
                   if fname.endswith(suffix):
                     newlink = "%s-%s.%s" % (fname[:-len(suffix)], sizing, ext)
                 newlink_ondisk = "%s%s" % (SITE_DIR, newlink)
@@ -691,11 +700,18 @@ def start():
 
     text = "%s%s" % (beginning_text, ending_text)
 
-    beginning_text = re.sub('<a href=[^>]*><img src=', '<a href="' + link + '"><img src=', beginning_text)
+    beginning_text = re.sub('<a href=[^>]*><img src=',
+                            '<a href="' + link + '"><img src=',
+                            beginning_text)
 
     notyet = "notyet" in tags
     if notyet:
       tags.remove("notyet")
+    elif not printed_most_recent:
+      # print the last pretty name in a notyet post
+      # assumes all notyet posts preceed all real posts
+      print "http://www.jefftk.com/p/%s" % prev_pretty_name
+      printed_most_recent = True
 
     services = []
     for tag in tags:
@@ -717,7 +733,7 @@ def start():
         services.append((3, "lesswrong", "lw", lw_link, token))
       elif tag.startswith('ea/'):
         ea_link = "http://effective-altruism.com/ea/%s" % token
-        services.append((4, "e-a.com", "ea", ea_link, token))
+        services.append((4, "the EA Forum", "ea", ea_link, token))
       elif tag.startswith('r/'):
         subreddit, post_id = token.split('/')
         r_link = "http://www.reddit.com/r/%s/comments/%s" % (subreddit, post_id)
@@ -746,7 +762,7 @@ def start():
     if services:
       comments_links = ", ".join('<a href="%s">%s</a>' % (service_link, service_name)
                                  for (service_name, _, service_link, _) in services)
-      rss_comments_note = "<p><i>Comment on %s or write jeff.t.kaufman@gmail.com</i>" % comments_links
+      rss_comments_note = "<p><i>Comment via: %s</i>" % comments_links
     else:
       rss_comments_note = ""
 
@@ -762,8 +778,9 @@ def start():
     if notyet:
       text = "<i>draft post</i><p>%s" % text
 
-    date_number_file = os.path.join(OUT_DIR, link_anchor + ".html")
-    pretty_name_file = os.path.join(P_DIR, pretty_names[link_anchor] + ".html")
+    date_number_file = os.path.join(NEW_OUT_DIR, link_anchor + ".html")
+    pretty_name_file = os.path.join(NEW_P_DIR,
+                                    cur_pretty_name + ".html")
     per_file = open(date_number_file, "w")
 
     per_file.write("<html>\n")
@@ -779,7 +796,7 @@ def start():
     per_file.write(text)
 
     if services:
-      per_file.write("<p>Comment on %s or write jeff@jefftk.com.\n" % (
+      per_file.write("<p>Comment via: %s\n" % (
           ', '.join('<a href="%s">%s</a>' % (service_link, service_name)
                     for service_name, service_abbr, service_link, service_tag in services)))
       per_file.write('<div id="comments">')
@@ -843,7 +860,7 @@ def start():
       rss_link = "/news/%s.rss" % tag
     rss_link_tag = '<link rel=alternate type="application/rss+xml" title="RSS Feed" href="%s">' % rss_link
 
-    t = open(os.path.join(OUT_DIR, "%s.html" % tag), "w").write
+    t = open(os.path.join(NEW_OUT_DIR, "%s.html" % tag), "w").write
     t("<html>\n")
     if tag == "all":
       page_title = "Blog Posts"
@@ -885,6 +902,15 @@ def start():
   write_footer(w_partial)
 
   edit_front_page(front_page_list)
+
+  os.rename(P_DIR, PREV_P_DIR)
+  os.rename(NEW_P_DIR, P_DIR)
+
+  os.rename(OUT_DIR, PREV_OUT_DIR)
+  os.rename(NEW_OUT_DIR, OUT_DIR)
+
+  os.symlink("%s/all.html" % OUT_DIR, "%s/index.html" % OUT_DIR)
+  os.symlink("%s/all.html" % OUT_DIR, "%s/index.html" % P_DIR)
 
 def tidy_day(day):
   d = str(int(day))
