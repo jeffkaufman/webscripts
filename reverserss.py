@@ -112,8 +112,10 @@ def start():
             current_post.append(line)
 
             if "</item>" in line:
-                posts.append("".join(current_post))
+                joined_post = "".join(current_post)
                 current_post = []
+                if not re.search('<guid>.*#update-.*</guid>', joined_post):
+                    posts.append(joined_post)
 
     write_category_feeds("".join(header), posts, "".join(footer))
 
