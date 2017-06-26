@@ -6,6 +6,10 @@ usage:
 
   python makerss.py
 
+This was much less 'designed' than 'accreted', and generally makes me sad
+to work on.  But it does what I want it to, so I haven't felt the need to
+replace it.
+
 """
 
 import sys, os, re, random, shutil, stat
