@@ -4,7 +4,7 @@ import os
 import sys
 import re
 from pprint import pprint
-from BeautifulSoup import BeautifulSoup
+from bs4 import BeautifulSoup
 import datetime
 from datetime import date, timedelta
 import calendar
@@ -31,7 +31,7 @@ def parse_table(table_strings):
         return s.strip()
 
     parse=[]
-    soup = BeautifulSoup("".join(table_strings))
+    soup = BeautifulSoup("".join(table_strings), 'lxml')
     for row in soup.table:
         if len(row) == 7:
             ignore, day_name, month, day_num, activity, time, location = [
