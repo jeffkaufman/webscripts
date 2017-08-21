@@ -472,7 +472,9 @@ with open(IN_HTML) as inf:
 
       beginning, end = match.split('</b>', 1)
 
-      update_text = beginning + '</b>' + end.split('<')[0] + '...'
+      end_short = end.split('<p>')[0].split('</div>')[0]
+
+      update_text = beginning + '</b>' + end_short + '...'
 
       update_link = '%s#%s' % (make_link(pretty_name), update_anchor)
 
