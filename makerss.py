@@ -39,6 +39,10 @@ GP_UID="103013777355236494008"
 def meta_viewport(n):
   return '<meta name="viewport" content="width=%spx">' % n
 
+GA = r"""
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-27645543-1"></script><script>window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());gtag('config', 'UA-27645543-1');</script>
+"""
+
 COMMENT_SCRIPT = r"""
 <script type="text/javascript">
 var last_visit = document.cookie.replace(/(?:(?:^|.*;\s*)jtk_last_visit\s*\=\s*([^;]*).*$)|^.*$/, "$1");
