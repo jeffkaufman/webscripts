@@ -646,8 +646,22 @@ def start():
     write_rss_item_begin(updates_n, w_partial, w_full,
                          'Update %s' % update_slug,
                          update_link, ['update_rss'])
+    slug_year, slug_month, slug_day = update_slug.split('-')
+    slug_month_str = {'01': 'Jan',
+                      '02': 'Feb',
+                      '03': 'Mar',
+                      '04': 'Apr',
+                      '05': 'May',
+                      '06': 'Jun',
+                      '07': 'Jul',
+                      '08': 'Aug',
+                      '09': 'Sep',
+                      '10': 'Oct',
+                      '11': 'Nov',
+                      '12': 'Dec'}[slug_month]
+
     write_rss_item_end(updates_n, w_partial, w_full,
-                       update_slug, '', '', update_text)
+                       slug_day, slug_month_str, slug_year, update_text)
 
   css = ('<style type="text/css">'
          'img {width: 100%}'
