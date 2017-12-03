@@ -274,6 +274,7 @@ def update_tz(descr, current_tz):
 
     return {"Eastern": "America/New_York",
             "Central": "America/Chicago",
+            "Mountain": "America/Phoenix",
             "Pacific": "America/Los_Angeles",
             "Greenwich": "Europe/London"}[m.groups()[0]]
 
