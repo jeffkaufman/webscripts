@@ -701,8 +701,8 @@ def start():
   cur_pretty_name=""
   printed_most_recent=False
 
-  for n, (link_anchor, date, title, raw_text, tags) \
-      in enumerate(all_posts):
+  post_n = 0
+  for link_anchor, date, title, raw_text, tags in all_posts:
     prev_pretty_name = cur_pretty_name
     cur_pretty_name=pretty_names[link_anchor]
     link = make_link(cur_pretty_name)
@@ -820,13 +820,16 @@ def start():
       rss_comments_note = ""
 
     if not notyet:
-      write_rss_item_begin(n, w_partial, w_full, title, link, tags)
+      write_rss_item_begin(post_n, w_partial, w_full, title, link, tags)
 
     month, day, year = date.split()[1:4]
 
     if not notyet:
       t = text + rss_comments_note
-      write_rss_item_end(n, w_partial, w_full, day, month, year, t)
+      write_rss_item_end(post_n, w_partial, w_full, day, month, year, t)
+
+    if not notyet:
+      post_n += 1
 
     if notyet:
       text = "<i>draft post</i><p>%s" % text
@@ -837,7 +840,8 @@ def start():
     per_file = open(date_number_file, "w")
 
     per_file.write("<html>\n")
-    per_file.write("<head><title>%s</title>%s%s</head>\n" % (title, meta, css))
+    per_file.write("<head><title>%s</title>%s%s%s</head>\n" % (
+      title, meta, css, GA))
 
     per_file.write('<body>%s</div><hr><div class="content">' % links_partial())
     per_file.write('<table id=title-date-tags>')
@@ -920,8 +924,9 @@ def start():
     else:
       page_title = "Posts tagged %s" % tag
 
-    t("  <head><title>%s</title>%s%s</head>\n" % (
-      page_title, meta_viewport("device-width, initial-scale=1"), rss_link_tag))
+    t("  <head><title>%s</title>%s%s%s</head>\n" % (
+      page_title, meta_viewport("device-width, initial-scale=1"),
+      rss_link_tag, GA))
     t('<style>'
       '.headfoot { margin: 3px }'
       'h2 { margin: .5em }'
