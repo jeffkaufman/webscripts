@@ -451,10 +451,9 @@ updates = []
 pretty_names = {}
 titles = {}
 title_and_link = []
-title_and_link_index = {}
 with open(IN_HTML) as inf:
-  for n, (link_anchor, date, title, raw_text, tags) \
-        in enumerate(items(open(IN_HTML))):
+  post_n = 0
+  for link_anchor, date, title, raw_text, tags in items(open(IN_HTML)):
     pretty_name = title_to_url_component(title)
 
     if pretty_name in titles:
@@ -463,7 +462,6 @@ with open(IN_HTML) as inf:
     titles[pretty_name] = 1
     pretty_names[link_anchor] = pretty_name
     if "notyet" not in tags:
-      title_and_link_index[n] = len(title_and_link)
       title_and_link.append((
         title, "%s/%s" % (P_URL, pretty_name)))
 
@@ -845,12 +843,11 @@ def start():
       per_file.write('</div>')
 
     earlier, later = None, None
-    if n in title_and_link_index:
-      i = title_and_link_index[n]
-      if i+1 < len(title_and_link):
-        earlier = title_and_link[i+1]
-      if i-1 >= 0:
-        later = title_and_link[i-1]
+    i = post_n-1
+    if 0 <= i+1 < len(title_and_link):
+      earlier = title_and_link[i+1]
+    if 0 <= i-1 < len(title_and_link):
+      later = title_and_link[i-1]
     per_file.write("<div id=top-posts>%s</div>" % best_posts(earlier, later))
 
     write_links_footer(per_file)
