@@ -12,7 +12,7 @@ replace it.
 
 """
 
-import sys, os, re, random, shutil, stat
+import sys, os, re, random, shutil, stat, subprocess
 
 SITE_URL="https://www.jefftk.com"
 SITE_DIR="/home/jefftk/jtk"
@@ -702,6 +702,27 @@ def start():
           oldlink = matches[0]
           if oldlink.startswith("/"):
             fname, ext = oldlink.rsplit(".", 1)
+            oldlink_ondisk = "%s%s" % (SITE_DIR, oldlink)
+            oldlink_ondisk_dims = "%s.dimensions" % oldlink_ondisk
+            add_attrs = []
+            if not os.path.exists(oldlink_ondisk):
+              print("Missing file %s" % oldlink_ondisk)
+            else:
+              if os.path.exists(oldlink_ondisk_dims):
+                with open(oldlink_ondisk_dims) as inf:
+                   dimensions = inf.read().strip()
+              else:
+                identify_output = subprocess.check_output(
+                  ["identify", oldlink_ondisk])
+                dimensions = identify_output.split()[2]
+                with open(oldlink_ondisk_dims, "w") as outf:
+                  outf.write(dimensions)
+
+              width, height = dimensions.split("x")
+              add_attrs.append("width=%s" % width)
+              add_attrs.append("height=%s" % height)
+
+            srcset = None
             if ext in ["jpg", "png"]:
               srcsets = []
               for sizing in ["2x", "3x", "4x"]:
@@ -714,9 +735,12 @@ def start():
                   srcsets.append("%s %s" % (newlink, sizing))
                   #print "  %s %s" % (newlink, sizing)
               if srcsets:
-                srcset = ", ".join(srcsets)
-                #print "using %s as srcset for %s" % (srcset, oldlink)
-                line = line.replace(oldlink, '%s" srcset="%s' % (oldlink, srcset))
+                add_attrs.append("srcset='%s'" % ", ".join(srcsets))
+
+            if add_attrs:
+              line = line.replace(oldlink,
+                                  '%s" %s' % (oldlink, " ".join(add_attrs)))
+
       new_raw_text.append(line)
     raw_text = "\n".join(new_raw_text)
 
