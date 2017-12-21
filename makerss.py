@@ -36,8 +36,8 @@ FRONT_PAGE_MAX=6 # how many to show on the front page
 
 GP_UID="103013777355236494008"
 
-def meta_viewport(n):
-  return '<meta name="viewport" content="width=%spx">' % n
+def meta_viewport():
+  return '<meta name="viewport" content="width=device-width, initial-scale=1">'
 
 GA = r"""
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-27645543-1"></script><script>window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());gtag('config', 'UA-27645543-1');</script>
@@ -641,7 +641,6 @@ def start():
   write_header(w_full)
 
   css = ('<style type="text/css">'
-         'img {width: 100%}'
          '.comment-thread {margin: 0px 0px 0px 30px;}'
          '.content {max-width:550px;}'
          '.comment {max-width: 448px;'
@@ -719,8 +718,22 @@ def start():
                   outf.write(dimensions)
 
               width, height = dimensions.split("x")
-              add_attrs.append("width=%s" % width)
-              add_attrs.append("height=%s" % height)
+              width, height = int(width), int(height)
+              img_id=title_to_url_component(fname)
+              add_attrs.append("id='%s'" % img_id)
+
+              imgcss = (
+                "<style>"
+                "#%s {"
+                "   width: %spx;"
+                "   height: %spx;"
+                "   max-width: 95vw;"
+                "   max-height: %.3fvw;"
+                "}"
+                "</style>" % (img_id, width, height,
+                              93.0 * height / width))
+
+              line = imgcss + line
 
             srcset = None
             if ext in ["jpg", "png"]:
@@ -738,7 +751,7 @@ def start():
                 add_attrs.append("srcset='%s'" % ", ".join(srcsets))
 
             if add_attrs:
-              line = line.replace(oldlink,
+              line = line.replace(oldlink+'"',
                                   '%s" %s' % (oldlink, " ".join(add_attrs)))
 
       new_raw_text.append(line)
@@ -803,7 +816,7 @@ def start():
     no_tags_no_ws = re.sub('<[^>]*>', '', re.sub('\s+',' ',re.sub('<style>[^<]*</style>','',text))).strip()
     meta = ('<meta name="description" content="%s..." />' % quote(no_tags_no_ws[:400]) + " " +
             '<meta name="keywords" content="%s" />' % quote(', '.join(tags)) + " " +
-            meta_viewport("device-width, initial-scale=1"))
+            meta_viewport())
 
     text = "<p>" + text
 
@@ -945,7 +958,7 @@ def start():
       page_title = "Posts tagged %s" % tag
 
     t("  <head><title>%s</title>%s%s%s</head>\n" % (
-      page_title, meta_viewport("device-width, initial-scale=1"),
+      page_title, meta_viewport(),
       rss_link_tag, GA))
     t('<style>'
       '.headfoot { margin: 3px }'
