@@ -719,21 +719,11 @@ def start():
 
               width, height = dimensions.split("x")
               width, height = int(width), int(height)
-              img_id=title_to_url_component(fname)
-              add_attrs.append("id='%s'" % img_id)
-
-              imgcss = (
-                "<style>"
-                "#%s {"
-                "   width: %spx;"
-                "   height: %spx;"
-                "   max-width: 95vw;"
-                "   max-height: %.3fvw;"
-                "}"
-                "</style>" % (img_id, width, height,
-                              93.0 * height / width))
-
-              line = imgcss + line
+              add_attrs.append("width=%s" % width)
+              add_attrs.append("height=%s" % height)
+              max_width = 95.0
+              add_attrs.append("style='max-width:%.1fvw; max-height:%.1fvw'" %
+                               (max_width, max_width * height / width))
 
             srcset = None
             if ext in ["jpg", "png"]:
