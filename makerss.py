@@ -693,6 +693,20 @@ def start():
                       r'<a name="update-\1"></a><b>Update \1</b>',
                       raw_text)
 
+    def dimensions(link_ondisk):
+      link_ondisk_dims = "%s.dimensions" % link_ondisk
+      if os.path.exists(link_ondisk_dims):
+        with open(link_ondisk_dims) as inf:
+          dims = inf.read().strip()
+      else:
+        identify_output = subprocess.check_output(
+          ["identify", link_ondisk])
+        dims = identify_output.split()[2]
+        with open(link_ondisk_dims, "w") as outf:
+          outf.write(dims)
+      width, height = dims.split("x")
+      return int(width), int(height)
+
     new_raw_text = []
     for line in raw_text.split("\n"):
       if "<img src=" in line:
@@ -702,23 +716,11 @@ def start():
           if oldlink.startswith("/"):
             fname, ext = oldlink.rsplit(".", 1)
             oldlink_ondisk = "%s%s" % (SITE_DIR, oldlink)
-            oldlink_ondisk_dims = "%s.dimensions" % oldlink_ondisk
             add_attrs = []
             if not os.path.exists(oldlink_ondisk):
               print("Missing file %s" % oldlink_ondisk)
             else:
-              if os.path.exists(oldlink_ondisk_dims):
-                with open(oldlink_ondisk_dims) as inf:
-                   dimensions = inf.read().strip()
-              else:
-                identify_output = subprocess.check_output(
-                  ["identify", oldlink_ondisk])
-                dimensions = identify_output.split()[2]
-                with open(oldlink_ondisk_dims, "w") as outf:
-                  outf.write(dimensions)
-
-              width, height = dimensions.split("x")
-              width, height = int(width), int(height)
+              width, height = dimensions(oldlink_ondisk)
               add_attrs.append("width=%s" % width)
               add_attrs.append("height=%s" % height)
               max_width = 95.0
@@ -735,10 +737,11 @@ def start():
                     newlink = "%s-%s.%s" % (fname[:-len(suffix)], sizing, ext)
                 newlink_ondisk = "%s%s" % (SITE_DIR, newlink)
                 if os.path.exists(newlink_ondisk):
-                  srcsets.append("%s %s" % (newlink, sizing))
-                  #print "  %s %s" % (newlink, sizing)
+                  newwidth, _ = dimensions(newlink_ondisk)
+                  srcsets.append("%s %sw" % (newlink, newwidth))
               if srcsets:
-                add_attrs.append("srcset='%s'" % ", ".join(srcsets))
+                srcsets.insert(0, "%s %sw" % (oldlink, width))
+                add_attrs.append("srcset='%s'" % ",".join(srcsets))
 
             if add_attrs:
               line = line.replace(oldlink+'"',
