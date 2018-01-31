@@ -272,7 +272,8 @@ def update_tz(descr, current_tz):
     if not m:
         return current_tz
 
-    return {"Eastern": "America/New_York",
+    return {"Puerto Rico": "America/Puerto_Rico",
+            "Eastern": "America/New_York",
             "Central": "America/Chicago",
             "Mountain": "America/Phoenix",
             "Pacific": "America/Los_Angeles",
