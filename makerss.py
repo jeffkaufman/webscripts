@@ -37,11 +37,16 @@ FRONT_PAGE_MAX=6 # how many to show on the front page
 GP_UID="103013777355236494008"
 
 def meta_viewport():
-  return '<meta name="viewport" content="width=device-width, initial-scale=1">'
+  return '<meta name="viewport" content="width=device-width,minimum-scale=1,initial-scale=1">'
 
 GA = r"""
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-27645543-1"></script><script>window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());gtag('config', 'UA-27645543-1');</script>
 """
+
+# pages that will never work with amp
+AMP_BLACKLIST = [
+  "breaking-down-cryonics-probabilities"
+]
 
 COMMENT_SCRIPT = r"""
 <script type="text/javascript">
@@ -566,19 +571,17 @@ def best_posts(earlier, later):
 
   random.shuffle(best)
 
-  li_html = '<li style="margin-bottom: 0.5em;">'
-
   best_posts_html = '<p>More Posts:</p><ul>%s</ul>' % (
-    "".join('%s<a href="%s/%s">%s</a>' % (
-        li_html, P_URL, pretty_names[post_date], post_title)
+    "".join('<li><p><a href="%s/%s">%s</a></li>' % (
+      P_URL, pretty_names[post_date], post_title)
             for (post_date, post_title) in random.sample(best,5)))
 
   for section, info in [("Older Post", earlier),
                         ("Newer Post", later)]:
     if info:
       title, link = info
-      best_posts_html = "%s<p>%s:</p><ul>%s<a href='%s'>%s</a></ul>" % (
-        best_posts_html, section, li_html, link, title)
+      best_posts_html = "%s<p>%s:</p><ul><li><p><a href='%s'>%s</a></ul>" % (
+        best_posts_html, section, link, title)
 
   return best_posts_html
 
@@ -594,11 +597,6 @@ def links_partial():
      '</span><a href="/contact">Contact</a>'))
   s += "\n"
   return "<div class=headfoot>%s</div>" % s
-
-def write_links_footer(p):
-    p.write("  <hr>\n")
-    p.write(links_partial())
-    p.write('  </body></html>\n')
 
 def write_rss_item_begin(n, w_partial, w_full, title, link, tags):
   for w in [w_partial, w_full]:
@@ -621,6 +619,9 @@ def write_rss_item_end(n, w_partial, w_full, day, month, year, t):
     w("      <description>%s</description>" % quote(t))
     w("    </item>")
 
+def ampify(x):
+  return x.replace('<img ', '<amp-img ')
+
 def start():
   rss_out=open(RSS_FNAME, "w")
   rss_full_out=open(RSS_FULL_FNAME, "w")
@@ -640,8 +641,7 @@ def start():
   write_header(w_partial)
   write_header(w_full)
 
-  css = ('<style type="text/css">'
-         '.comment-thread {margin: 0px 0px 0px 30px;}'
+  css = ('.comment-thread {margin: 0px 0px 0px 30px;}'
          '.content {max-width:550px;}'
          '.comment {max-width: 448px;'
          '          overflow: hidden;'
@@ -664,8 +664,12 @@ def start():
          '               top: 30px;'
          '               left: 600px;'
          '               max-width: 200px;}}'
-         '#title-date-tags { width: 100% }'
-         '</style>')
+         '#title-date-tags { width: 100% }')
+  amp_css = ('#wrapper { margin: 8px}'
+             '#title-date-tags h3 { margin: 0 }')
+
+  amp_boilerplate = '<style amp-boilerplate>body{-webkit-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-moz-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-ms-animation:-amp-start 8s steps(1,end) 0s 1 normal both;animation:-amp-start 8s steps(1,end) 0s 1 normal both}@-webkit-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-moz-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-ms-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-o-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}</style><noscript><style amp-boilerplate>body{-webkit-animation:none;-moz-animation:none;-ms-animation:none;animation:none}</style></noscript>'
+
 
   tag_to_items = {}
 
@@ -707,8 +711,16 @@ def start():
       width, height = dims.split("x")
       return int(width), int(height)
 
-    new_raw_text = []
+    amp_custom_css_extra = set()
+
+    new_raw_text_html = []
+    new_raw_text_amp = []
+
+    raw_text = raw_text.replace('<img\n', '<img ')
+    raw_text = re.sub('<img *', '\n<img ', raw_text)
+
     for line in raw_text.split("\n"):
+      amp_line = html_line = line
       if "<img src=" in line:
         matches = re.findall('<img src="([^"]*)"', line)
         if len(matches) == 1:
@@ -717,6 +729,7 @@ def start():
             fname, ext = oldlink.rsplit(".", 1)
             oldlink_ondisk = "%s%s" % (SITE_DIR, oldlink)
             add_attrs = []
+            add_html_attrs = []
             if not os.path.exists(oldlink_ondisk):
               print("Missing file %s" % oldlink_ondisk)
             else:
@@ -724,8 +737,8 @@ def start():
               add_attrs.append("width=%s" % width)
               add_attrs.append("height=%s" % height)
               max_width = 95.0
-              add_attrs.append("style='max-width:%.1fvw; max-height:%.1fvw'" %
-                               (max_width, max_width * height / width))
+              add_html_attrs.append("style='max-width:%.1fvw; max-height:%.1fvw'" %
+                                    (max_width, max_width * height / width))
 
             srcset = None
             if ext in ["jpg", "png"]:
@@ -744,25 +757,61 @@ def start():
                 add_attrs.append("srcset='%s'" % ",".join(srcsets))
 
             if add_attrs:
-              line = line.replace(oldlink+'"',
-                                  '%s" %s' % (oldlink, " ".join(add_attrs)))
+              html_line = html_line.replace(
+                oldlink+'"',
+                '%s" %s' % (oldlink, " ".join(add_attrs + add_html_attrs)))
+              amp_line = amp_line.replace(
+                oldlink+'"',
+                '%s" %s' % (oldlink, " ".join(add_attrs)))
 
-      new_raw_text.append(line)
-    raw_text = "\n".join(new_raw_text)
+      if 'style=' in amp_line:
+        amp_line = re.sub("style='([^']*)'", 'style="\\1"', amp_line)
+        for style in re.findall('style="([^"]*)"', amp_line):
+          auto_id = 'inline-style-%s' % abs(hash(style))
+          amp_custom_css_extra.add('#%s {%s}' % (
+            auto_id, style))
+          amp_line = amp_line.replace('style="%s"' % style, 'id=%s' % auto_id)
+
+      new_raw_text_html.append(html_line)
+      new_raw_text_amp.append(amp_line)
+    html_raw_text = "\n".join(new_raw_text_html)
+    amp_raw_text = "\n".join(new_raw_text_amp)
+
+    amp_raw_text = amp_raw_text.replace('\n<img', '<img')
+    html_raw_text = html_raw_text.replace('\n<img', '<img')
+
+    amp_raw_text = re.sub("<img([^>]*)>",
+                          '<amp-img\\1 layout="responsive"></amp-img>',
+                          amp_raw_text)
+
+    if '<style>' in amp_raw_text:
+      # none of my inline styles use <
+      style_re = '<style>([^<]*)</style>'
+      for style_block in re.findall(style_re, amp_raw_text, re.MULTILINE):
+        amp_custom_css_extra.add(style_block)
+      amp_raw_text = re.sub(style_re, '', amp_raw_text)
 
     if "~~break~~" in raw_text:
-      beginning_text, ending_text = raw_text.split("~~break~~")
+      amp_beginning_text, amp_ending_text = amp_raw_text.split("~~break~~")
+      html_beginning_text, html_ending_text = html_raw_text.split("~~break~~")
       broke_text = True
     else:
-      beginning_text = raw_text
-      ending_text = ""
+      amp_beginning_text = amp_raw_text
+      html_beginning_text = html_raw_text
+      amp_ending_text = ""
+      html_ending_text = ""
       broke_text = False
 
-    text = "%s%s" % (beginning_text, ending_text)
+    amp_text = "<p>%s%s" % (amp_beginning_text, amp_ending_text)
+    html_text = "<p>%s%s" % (html_beginning_text, html_ending_text)
 
-    beginning_text = re.sub('<a href=[^>]*><img src=',
-                            '<a href="' + link + '"><img src=',
-                            beginning_text)
+    html_beginning_text = re.sub('<a href=[^>]*><img src=',
+                                 '<a href="' + link + '"><img src=',
+                                 html_beginning_text)
+
+    amp_beginning_text = re.sub('<a href=[^>]*><amp-img src=',
+                                '<a href="' + link + '"><amp-img src=',
+                                amp_beginning_text)
 
     notyet = "notyet" in tags
     if notyet:
@@ -806,12 +855,13 @@ def start():
 
     tags = set(x for x in tags if '/' not in x)
 
-    no_tags_no_ws = re.sub('<[^>]*>', '', re.sub('\s+',' ',re.sub('<style>[^<]*</style>','',text))).strip()
+    no_tags_no_ws = re.sub('<[^>]*>', '',
+                           re.sub('\s+',' ',
+                                  re.sub('<style>[^<]*</style>', '',
+                                         html_text))).strip()
     meta = ('<meta name="description" content="%s..." />' % quote(no_tags_no_ws[:400]) + " " +
             '<meta name="keywords" content="%s" />' % quote(', '.join(tags)) + " " +
             meta_viewport())
-
-    text = "<p>" + text
 
     tag_block = ""
     if tags:
@@ -832,45 +882,79 @@ def start():
     month, day, year = date.split()[1:4]
 
     if not notyet:
-      t = text + rss_comments_note
+      t = html_text + rss_comments_note
       write_rss_item_end(post_n, w_partial, w_full, day, month, year, t)
 
     if not notyet:
       post_n += 1
 
     if notyet:
-      text = "<i>draft post</i><p>%s" % text
+      amp_text = "<i>draft post</i><p>%s" % amp_text
+      html_text = "<i>draft post</i><p>%s" % html_text
 
     date_number_file = os.path.join(NEW_OUT_DIR, link_anchor + ".html")
     pretty_name_file = os.path.join(NEW_P_DIR,
                                     cur_pretty_name + ".html")
+    amp_pretty_name_file = os.path.join(NEW_P_DIR,
+                                        cur_pretty_name + ".amp.html")
     per_file = open(date_number_file, "w")
 
-    per_file.write("<html>\n")
-    per_file.write("<head><title>%s</title>%s%s%s</head>\n" % (
-      title, meta, css, GA))
+    amp = open(amp_pretty_name_file, "w") if cur_pretty_name not in AMP_BLACKLIST else None
 
-    per_file.write('<body>%s</div><hr><div class="content">' % links_partial())
-    per_file.write('<table id=title-date-tags>')
-    per_file.write('<tr><td valign=top rowspan=2><h3><a href="%s">%s</a></h3>' % (
-      link, title))
+    def html_write(s):
+      per_file.write(s)
+
+    def amp_write(s):
+      if amp:
+        amp.write(s)
+
+    def both_write(s):
+      html_write(s)
+      amp_write(s)
+
+    html_write('<html><head>')
+    if amp:
+      html_write('<link rel="amphtml-draft" href="%s.amp">' % link_anchor)
+    amp_write('<!doctype html><html amp lang="en"><head>'
+              '<meta charset="utf-8">'
+              '<script async src="https://cdn.ampproject.org/v0.js"></script>'
+              '<link rel="canonical" href="%s">' % link_anchor)
+    both_write("<title>%s</title>%s" % (title, meta))
+
+    html_write('<style>%s</style>%s' % (css, GA))
+    amp_write(amp_boilerplate)
+    amp_write('<style amp-custom>%s%s%s</style>' % (
+      css, amp_css, ''.join(sorted(amp_custom_css_extra))))
+    #amp_write(ga)
+    #amp_write(ld_json)
+    both_write("</head>")
+
+    both_write('<body><div id=wrapper>')
+    both_write('%s<hr><div class="content">' % links_partial())
+    both_write('<table id=title-date-tags>')
+    both_write('<tr><td valign=top rowspan=2><h3><a href="%s">%s</a></h3>' % (
+        link, title))
     fancy_date = "%s %s, %s" % (month, tidy_day(day), year)
-    per_file.write('    <td align=right valign=top>%s' % fancy_date)
-    per_file.write('<tr><td align=right valign=top>%s</table>' % tag_block)
-    per_file.write(text)
+    both_write('    <td align=right valign=top>%s' % fancy_date)
+    both_write('<tr><td align=right valign=top>%s</table>' % tag_block)
+
+    html_write(html_text)
+    amp_write(amp_text)
 
     if services:
-      per_file.write("<p>Comment via: %s\n" % (
-          ', '.join('<a href="%s">%s</a>' % (service_link, service_name)
-                    for service_name, service_abbr, service_link, service_tag in services)))
-      per_file.write('<div id="comments">')
-      per_file.write(COMMENT_SCRIPT)
-      per_file.write('<script type="text/javascript">')
+      both_write("<p>Comment via: %s\n" % (
+        ', '.join('<a href="%s">%s</a>' % (service_link, service_name)
+                  for service_name, service_abbr, service_link, service_tag in services)))
+
+      both_write('<div id="comments">')
+      html_write(COMMENT_SCRIPT)
+      html_write('<script type="text/javascript">')
       for service_name, service_abbr, service_link, service_tag in services:
-        per_file.write("pullComments('/wsgi/json-comments/%s/%s', '%s');\n" % (
+        html_write("pullComments('/wsgi/json-comments/%s/%s', '%s');\n" % (
             service_abbr, service_tag, service_name))
-      per_file.write('</script>')
-      per_file.write('</div>')
+      html_write('</script>')
+      amp_write('tbd')
+      both_write('</div>')
 
     earlier, later = None, None
     i = post_n-1
@@ -878,10 +962,16 @@ def start():
       earlier = title_and_link[i+1]
     if 0 <= i-1 < len(title_and_link):
       later = title_and_link[i-1]
-    per_file.write("<div id=top-posts>%s</div>" % best_posts(earlier, later))
+    both_write("<div id=top-posts>%s</div>" % best_posts(earlier, later))
 
-    write_links_footer(per_file)
+
+    both_write("  <hr>\n")
+    both_write(links_partial())
+    both_write('  </div></body></html>\n')
+
     per_file.close()
+    if amp:
+      amp.close()
 
     shutil.copy(date_number_file, pretty_name_file)
     st = os.stat(date_number_file)
@@ -897,7 +987,7 @@ def start():
       w("<div class=blog-entry-title><a class=invisible-link href='%s'>%s</a></div>" % (link, title))
       w("<div class=blog-entry-beginning>")
       w("<p>")
-      w(beginning_text)
+      w(html_beginning_text)
 
       if broke_text:
         w(" <a href='%s'>more...</a>" % link)
