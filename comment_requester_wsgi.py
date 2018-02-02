@@ -531,6 +531,38 @@ def cacher(cache_only, fn, service, arg):
 
     return fn_value
 
+def flatten(json_comments, parent_key=None):
+    flattened = []
+    for comment in json_comments:
+        ts = comment[4]
+        key = '%s %s' % (parent_key, ts) if parent_key else str(ts)
+        if len(comment) == 5:
+            flattened.append((key, comment))
+        elif len(comment) == 6:
+            flattened.append((key, comment[:-1]))
+            flattened.extend(flatten(comment[-1], key))
+        else:
+            raise Exception('invalid comment %r' % comment)
+    return flattened
+
+def amp_comments(json_comments):
+    return [(key,
+             {'author': author,
+              'source_link': source_link,
+              'anchor': anchor,
+              'text': '%s%s' % ('&rarr;' * key.count(' '), text),
+              'timestamp': timestamp})
+        for key, (author, source_link, anchor, text, timestamp) in flatten(
+                json_comments)]
+
+SERVICE_FNS = {
+    'gp': service_gp,
+    'fb': service_fb,
+    'lw': service_lw,
+    'ea': service_ea,
+    'r': service_r,
+    'hn': service_hn}
+
 # actually respond to the request
 # raising errors here will give a 500 and put the traceback in the body
 def start(environ, start_response):
@@ -540,19 +572,7 @@ def start(environ, start_response):
 
     if path.startswith("/json-comments"):
         _, path_initial, service, token = path.split("/", 3)
-        service_fn = None
-        if service == "gp":
-            service_fn = service_gp
-        elif service == "fb":
-            service_fn = service_fb
-        elif service == "lw":
-            service_fn = service_lw
-        elif service == "ea":
-            service_fn = service_ea
-        elif service == "r":
-            service_fn = service_r
-        elif service == "hn":
-            service_fn = service_hn
+        service_fn = SERVICE_FNS.get(service, None)
 
         if path_initial == "json-comments-nocache":
             return json.dumps(service_fn(token))
@@ -563,8 +583,18 @@ def start(environ, start_response):
         if service_fn:
             return json.dumps(cacher(cache_only, service_fn, service, token))
 
-    return "not supported"
+    elif path == "/amp-json-comments":
+        query_string = environ["QUERY_STRING"]
+        unsorted_comments = []
+        for component in query_string.split('&'):
+            service_abbr, service_token = component.split('=')
+            unsorted_comments.extend(amp_comments(cacher(
+                cache_only=False, fn=SERVICE_FNS[service_abbr],
+                service=service_abbr, arg=service_token)))
+        return json.dumps({'items': [
+            comment for _, comment in sorted(unsorted_comments)]})
 
+    return "not supported %r" % path
 
 def application(environ, start_response):
     raw = False
