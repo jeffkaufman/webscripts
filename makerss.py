@@ -4,8 +4,33 @@
 """
 usage:
 
-  python makerss.py
+  python makerss.py && python reverserss.py
 
+I find this elisp useful:
+
+  (defun start-news-entry ()
+    (interactive)
+    (insert (format-time-string
+       "  <a name=\"%Y-%m-%d\"></a><h3>%A %B %d %Y:</h3>"))
+    (newline)
+    (insert "  <div class=\"pt\">")  (newline)  (newline)
+    (insert "    <h3></h3>") (newline)
+    (insert "    <h4>Tags: notyet</h4>") (newline) (newline) (newline)
+    (insert "  </div>") (newline))
+
+  (require 'subr-x)
+  (defun process-sentinel (process event_type)
+    (message (format "%s: %s%s" process
+                     (string-trim event_type)
+                     (if (string= event_type "finished\n")
+                         ""
+                         " (see buffer make-rss)"))))
+
+  (defun publish-news-entries ()
+    (interactive)
+    (message "publishing news entries in the background...")
+    (start-process "make-rss" "make-rss" "~/bin/makerss-and-reverserss.sh")
+    (set-process-sentinel (get-process "make-rss") 'process-sentinel))
 """
 
 import sys, os, re, random, shutil, stat, subprocess
