@@ -1067,8 +1067,8 @@ def start():
       rss_link = '/news/%s.rss' % tag
 
     entries = '\n'.join('''\
-<li><a href="%s">'
-  <div class=title>%s</div>'
+<li><a href="%s">
+  <div class=title>%s</div>
   <div class=date>%s %s, %s</div></a></li>''' % (
     config.relative_url(post.link()), post.title, post.month,
     post.day, post.year) for post in tag_posts)
