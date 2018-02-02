@@ -42,7 +42,7 @@ For experimenting with AMP I have the following in my nginx config:
     }
     server {
       ...
-      rewrite ^(/p/(?!index).*) $1$amp last;
+      rewrite ^(/p/(?!index)..*) $1$amp last;
     }
   }
 
