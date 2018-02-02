@@ -156,6 +156,19 @@ gtag('config', 'UA-27645543-1');
 </script>
 </span>''',
 
+  'google_analytics_amp_config': '''\
+{
+  "vars": {
+    "account": "UA-27645543-1"
+  },
+  "triggers": {
+    "trackPageview": {
+      "on": "visible",
+      "request": "pageview"
+    }
+  }
+}''',
+
   'comment_script': r'''<script type="text/javascript">
 var last_visit = document.cookie.replace(/(?:(?:^|.*;\s*)jtk_last_visit\s*\=\s*([^;]*).*$)|^.*$/, "$1");
 var current_time = new Date().getTime();
@@ -818,8 +831,19 @@ class Post:
     title.text = self.title
     head.append(title)
 
-    if not is_amp:
+    body = etree.Element('body')
+
+    if is_amp:
+      amp_custom_elements.add(
+        ('amp-analytics', 'https://cdn.ampproject.org/v0/amp-analytics-0.1.js'))
+      amp_analytics = etree.Element('amp-analytics', type='googleanalytics')
+      ga_config = etree.Element('script', type='application/json')
+      ga_config.text = SNIPPETS['google_analytics_amp_config']
+      amp_analytics.append(ga_config)
+      body.append(amp_analytics)
+    else:
       head.append(parse(SNIPPETS['google_analytics']))
+
 
     # TODO: get GA into amp
     # TODO: look into ld json schema for amp
@@ -840,7 +864,6 @@ class Post:
         ce_script.set('custom-element', custom_element)
         head.append(ce_script)
 
-    body = etree.Element('body')
     wrapper = etree.Element('div', id='wrapper')
 
     wrapper.append(parse(links_partial()))
