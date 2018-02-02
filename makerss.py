@@ -169,22 +169,43 @@ BEST_POSTS = [
 SNIPPETS = {
   'meta_viewport': 'width=device-width,minimum-scale=1,initial-scale=1',
 
-  'google_analytics': r'''<span>
-<script async="" src="https://www.googletagmanager.com/gtag/js?id=UA-27645543-1"></script>
+  'google_analytics': r'''
 <script>
-window.dataLayer = window.dataLayer || [];
-function gtag(){
-  dataLayer.push(arguments);
-}
-gtag('js', new Date());
-gtag('config', 'UA-27645543-1');
-</script>
-</span>''',
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
 
-  'google_analytics_amp_config': '''\
+  ga('create', 'UA-27645543-1', 'auto');
+  ga('send', 'pageview');
+</script>
+''',
+
+  'google_analytics_nonamp': r'''
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-27645543-1', 'auto');
+  ga('set', 'expId', 'zLjKaw9oRNayoqGxuudFVQ');
+  ga('set', 'expVar', '0');
+  ga('send', 'pageview',  {'dimension1': 'non-amp'});
+</script>
+''',
+
+  'google_analytics_amp': '''
+<amp-analytics type="googleanalytics">
+<script type="application/json">
 {
   "vars": {
     "account": "UA-27645543-1"
+  },
+  "extraUrlParams": {
+    "cd1": "amp",
+    "xid": "zLjKaw9oRNayoqGxuudFVQ",
+    "xvar": "1"
   },
   "triggers": {
     "trackPageview": {
@@ -192,7 +213,9 @@ gtag('config', 'UA-27645543-1');
       "request": "pageview"
     }
   }
-}''',
+}
+</script>
+</amp-analytics>''',
 
   'comment_script': r'''<script type="text/javascript">
 var last_visit = document.cookie.replace(/(?:(?:^|.*;\s*)jtk_last_visit\s*\=\s*([^;]*).*$)|^.*$/, "$1");
@@ -861,13 +884,9 @@ class Post:
     if is_amp:
       amp_custom_elements.add(
         ('amp-analytics', 'https://cdn.ampproject.org/v0/amp-analytics-0.1.js'))
-      amp_analytics = etree.Element('amp-analytics', type='googleanalytics')
-      ga_config = etree.Element('script', type='application/json')
-      ga_config.text = SNIPPETS['google_analytics_amp_config']
-      amp_analytics.append(ga_config)
-      body.append(amp_analytics)
+      body.append(parse(SNIPPETS['google_analytics_amp']))
     else:
-      head.append(parse(SNIPPETS['google_analytics']))
+      head.append(parse(SNIPPETS['google_analytics_nonamp']))
 
 
     # TODO: get GA into amp
@@ -922,33 +941,22 @@ class Post:
           'amp-list', 'https://cdn.ampproject.org/v0/amp-list-0.1.js'))
         amp_custom_elements.add((
           'amp-mustache', 'https://cdn.ampproject.org/v0/amp-mustache-0.1.js'))
-        amp_list = etree.Element(
-          'amp-list', width='auto', height="500",
-          layout='fixed-height',
-          src='/wsgi/amp-json-comments?%s' % (
-            '&'.join('%s=%s' % (service_abbr, service_token)
-                     for _, service_abbr, _, service_token in self.services)))
-        template = etree.Element('template', type='amp-mustache')
-        comment = etree.Element('div', id='{{anchor}}')
-        comment.set('class', 'comment')
-        source_a = etree.Element('a', href='{{source_link}}')
-        source_a.text='{{{author}}}'
-        comment.append(source_a)
-        service_span = etree.Element('span')
-        service_span.text = ' ({{service}})'
-        comment.append(service_span)
-        comment_link = etree.Element('a', href='#{{anchor}}')
-        comment_link.set('class', 'commentlink')
-        comment.append(comment_link)
-        comment_text_p = etree.Element('p')
-        comment_text_p.text = '{{{text}}}'
-        comment.append(comment_text_p)
-        template.append(comment)
-        amp_list.append(template)
-        overflow = etree.Element('div', overflow='')
-        overflow.text = 'See more'
-        amp_list.append(overflow)
-        comment_thread.append(amp_list)
+
+        comment_thread.append(parse('''
+<amp-list width=auto height=500 layout="fixed-height" src=%s>
+  <template type="amp-mustache">
+    <div class=comment id="{{anchor}}">
+      <a dontescapethis="{{source_link}}">{{author}}</a> ({{service}})
+      <a dontescapethis="#{{anchor}}" class=commentlink></a>
+      <p>{{{text}}}
+    </div>
+  </template>
+  <div overflow>See more</div>
+</amp-list>
+''' % ('/wsgi/amp-json-comments?%s' % (
+  '&'.join('%s=%s' % (service_abbr, service_token)
+           for _, service_abbr, _, service_token in self.services)))))
+
       else:
         content.append(parse('''\
 <div id="comments">
@@ -1001,7 +1009,8 @@ class Post:
         head.append(ce_script)
 
     return '<!doctype html>\n%s' % etree.tostring(
-      page, method='html', pretty_print=True).decode('utf-8').replace(config.break_token, '')
+      page, method='html', pretty_print=True).decode('utf-8').replace(
+        config.break_token, '').replace('dontescapethis', 'href')
 
   def stringify_(self, element):
     return etree.tostring(
