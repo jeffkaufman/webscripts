@@ -453,7 +453,7 @@ function pullComments(wsgiUrl, serviceName) {
       config.full_url(config.posts),
       config.rss_description),
 
-  'rss_footer': '</channel></rss>',
+  'rss_footer': '\n</channel>\n</rss>',
 
   'css': '''\
 .comment-thread {margin: 0px 0px 0px 30px;}
@@ -693,8 +693,9 @@ class Post:
   def link(self):
     return os.path.join(config.posts, self.name)
 
-  def bare_html(self):
-    return self.stringify_(self.element)
+  def bare_html(self, element):
+    # don't include the wrapping div
+    return '\n'.join(self.stringify_(x) for x in element.findall('*'))
 
   def blog_entry_summary(self):
     element = deepcopy(self.element)
@@ -739,6 +740,7 @@ class Post:
       element.insert(0, parse('<p><i>draft post</i></p>'))
 
     amp_styles = set()
+    amp_custom_elements = set()
 
     if is_amp:
       for styled in element.findall('.//*[@style]'):
@@ -756,10 +758,31 @@ class Post:
         img.tag = 'amp-img'
         img.set('layout', 'responsive')
 
+        try:
+          border = img.attrib.pop('border')
+        except KeyError:
+          pass
+
+      for iframe in element.findall('.//iframe'):
+        if 'youtube' in iframe.get('src'):
+          amp_custom_elements.add(
+            ('amp-youtube', 'https://cdn.ampproject.org/v0/amp-youtube-0.1.js'))
+          iframe.tag = 'amp-youtube'
+          videoid, = re.findall('/embed/([^?]*)', iframe.get('src'))
+          attrib = iframe.attrib
+          width, height = attrib['width'], attrib['height']
+          attrib.clear()
+          attrib['width'], attrib['height'] = width, height
+          attrib['layout'] = 'responsive'
+          attrib['data-videoid'] = videoid
+        else:
+          #iframe.tag = 'amp-iframe'
+          pass
+
     no_tags_no_ws = re.sub('<[^>]*>', '',
                            re.sub('\s+',' ',
                                   re.sub('<style>[^<]*</style>', '',
-                                         self.bare_html()))).strip()
+                                         self.bare_html(element)))).strip()
 
     head = etree.Element('head')
     head.append(etree.Element(
@@ -777,9 +800,9 @@ class Post:
     if is_amp:
       head.append(etree.Element('link', rel='canonical',
                                 href=config.relative_url(self.link())))
-    else:
-      head.append(etree.Element('link', rel='amphtml-draft', href='%s.amp' % (
-        config.relative_url(self.link()))))
+    #else:
+    #  head.append(etree.Element('link', rel='amphtml-draft', href='%s.amp' % (
+    #    config.relative_url(self.link()))))
 
     title = etree.Element('title')
     title.text = self.title
@@ -797,9 +820,15 @@ class Post:
 
     head.append(parse(
       '<style%s>%s%s</style>' % (
-        ' amp_custom=""' if is_amp else '',
+        ' amp-custom=""' if is_amp else '',
         SNIPPETS['css'],
         '\n'.join(sorted(amp_styles)))))
+
+    if is_amp:
+      for custom_element, custom_element_url in amp_custom_elements:
+        ce_script = etree.Element('script', async='', src=custom_element_url)
+        ce_script.set('custom-element', custom_element)
+        head.append(ce_script)
 
     body = etree.Element('body')
     wrapper = etree.Element('div', id='wrapper')
@@ -876,13 +905,13 @@ class Post:
     page.append(head)
     page.append(body)
 
-    return '<!doctype>%s' % self.stringify_(page)
+    return '<!doctype html>\n%s' % etree.tostring(
+      page, method='html', pretty_print=True).decode('utf-8').replace(config.break_token, '')
 
   def stringify_(self, element):
-    # don't include the wrapping div
-    html = b'\n'.join(etree.tostring(x, method='html', pretty_print=True)
-                      for x in element.findall('*')).decode('utf-8')
-    return html.replace(config.break_token, '')
+    return etree.tostring(
+      element, method='html', pretty_print=True).decode(
+        'utf-8').replace(config.break_token, '')
 
   def rss(self):
     element = deepcopy(self.element)
@@ -894,7 +923,7 @@ class Post:
       element.append(parse('<p><i>Comment via: %s</i>' %
                                       comments_links))
 
-    html = self.stringify_(element)
+    html = self.bare_html(element)
 
     return '''
 <item>
@@ -1064,7 +1093,8 @@ def start():
       for update in post.updates.values():
         rss_entries['%s-%s' % (update.slug, post.slug)] = update.rss()
 
-  rss_entries = reversed([entry for _, entry in sorted(rss_entries.items())])
+  rss_entries = list(reversed([
+    entry for _, entry in sorted(rss_entries.items())]))
   for rss_file in [config.rss, config.rss_full]:
     with open(config.full_filename(
         config.new(rss_file)), 'w') as outf:
