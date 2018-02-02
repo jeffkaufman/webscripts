@@ -31,6 +31,24 @@ I find this elisp useful:
     (message "publishing news entries in the background...")
     (start-process "make-rss" "make-rss" "~/bin/makerss-and-reverserss.sh")
     (set-process-sentinel (get-process "make-rss") 'process-sentinel))
+
+For experimenting with AMP I have the following in my nginx config:
+
+  http {
+    ...
+    split_clients "amp${remote_addr}${http_user_agent}${date_gmt}" $amp {
+      50% ".amp";
+      * "";
+    }
+    server {
+      ...
+      rewrite ^(/p/(?!index).*) $1$amp last;
+    }
+  }
+
+This makes pages under /p/ (except for index which is non-amp) serve amp
+versions half the time.  Then I report this to Google Analytics below via
+both custom dimensions and a content experiment.
 """
 
 import sys, os, re, random, shutil, stat, subprocess
