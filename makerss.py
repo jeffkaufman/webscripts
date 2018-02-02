@@ -1227,8 +1227,10 @@ li:nth-child(odd) {
     os.rename(x, config.prev(x))
     os.rename(config.new(x), x)
 
-  #os.symlink("%s/all.html" % OUT_DIR, "%s/index.html" % OUT_DIR)
-  #os.symlink("%s/all.html" % OUT_DIR, "%s/index.html" % P_DIR)
+  os.symlink(config.full_filename(os.path.join(config.out, 'all.html')),
+             config.full_filename(os.path.join(config.out, 'index.html')))
+  os.symlink(config.full_filename(os.path.join(config.out, 'all.html')),
+             config.full_filename(os.path.join(config.posts, 'index.html')))
 
 def tidy_day(day):
   d = str(int(day))
