@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
@@ -6,50 +6,157 @@ usage:
 
   python makerss.py
 
-This was much less 'designed' than 'accreted', and generally makes me sad
-to work on.  But it does what I want it to, so I haven't felt the need to
-replace it.
-
 """
 
 import sys, os, re, random, shutil, stat, subprocess
+from lxml import etree
+import lxml.html
+from copy import deepcopy
+from collections import defaultdict
 
-SITE_URL="https://www.jefftk.com"
-SITE_DIR="/home/jefftk/jtk"
-IN_HTML="%s/news_raw.html" % SITE_DIR
-FRONT_PAGE="%s/index.html" % SITE_DIR
-FRONT_PAGE_TMP=FRONT_PAGE+"~"
-OUT_DIR="%s/news" % SITE_DIR
-P_DIR="%s/p" % SITE_DIR
-NEW_OUT_DIR="%s/news-new" % SITE_DIR
-NEW_P_DIR="%s/p-new" % SITE_DIR
-PREV_OUT_DIR="%s/news-prev" % SITE_DIR
-PREV_P_DIR="%s/p-prev" % SITE_DIR
-P_URL="/p"
-RSS_URL="%s/news.rss" % SITE_URL
-RSS_FNAME="%s/news.rss" % SITE_DIR
+class Configuration:
+  def __init__(self):
+    self.site_url = 'https://www.jefftk.com'
+    self.site_dir = '/home/jefftk/jtk'
+    self.in_html = 'news_raw.html'
+    self.front_page = "index.html"
+    self.out = 'news'
+    self.posts = 'p'
+    self.rss = 'news.rss'
+    self.rss_full = 'news_full.rss'
 
-RSS_FULL_FNAME="%s/news_full.rss" % SITE_DIR
+    self.rss_description = "Jeff Kaufman's Writing"
 
-RSS_MAX = 30
-FRONT_PAGE_MAX=6 # how many to show on the front page
+    # How many posts to put in the rss feed.
+    self.rss_max = 30
 
-GP_UID="103013777355236494008"
+    # How many posts to put on the front page.
+    self.front_page_max = 6
 
-def meta_viewport():
-  return '<meta name="viewport" content="width=device-width,minimum-scale=1,initial-scale=1">'
+    # Author's UID on Google Plus
+    self.google_plus_uid = "103013777355236494008"
 
-GA = r"""
-<script async src="https://www.googletagmanager.com/gtag/js?id=UA-27645543-1"></script><script>window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());gtag('config', 'UA-27645543-1');</script>
-"""
+    self.break_token = '~~break~~'
 
-# pages that will never work with amp
-AMP_BLACKLIST = [
-  "breaking-down-cryonics-probabilities"
+    self.notyet_token = 'notyet'
+
+    self.max_update_chars = 500
+
+  def full_url(self, leaf):
+    return os.path.join(self.site_url, leaf)
+
+  def full_filename(self, leaf):
+    return os.path.join(self.site_dir, leaf)
+
+  def post_url(self, post):
+    return os.path.join(self.posts, post.name)
+
+  def relative_url(self, leaf):
+    return '/%s' % leaf
+
+  def front_page_fname(self):
+    return self.full_filename(self.front_page)
+
+  def new(self, fname):
+    return '%s-new' % fname
+
+  def prev(self, fname):
+    return '%s-prev' % fname
+
+config = Configuration()
+
+BEST_POSTS = [
+  ('2016-06-20', 'Mike Mulligan and His Obsolete Technology'),
+  ('2016-06-15', 'Reading about guns'),
+  ('2016-02-26', 'Make Buses Dangerous'),
+  ('2016-01-16', 'Tiny House Movement'),
+  ('2015-11-29', 'Giving vs Doing'),
+  ('2015-11-20', 'Negative News'),
+  ('2015-11-09', 'Thoughtful Non-consumption'),
+  ('2015-10-20', 'How Bad Is Dairy?'),
+  ('2015-10-07', 'Mercury Spill'),
+  ('2015-08-11', 'Why Global Poverty?'),
+  ('2015-07-24', 'Lyme Disease By County'),
+  ('2015-06-27', 'Cheap College via Marrying'),
+  ('2015-06-17', 'Subway Synchronization Protocol'),
+  ('2015-05-14', 'Singular They FAQ'),
+  ('2015-04-12', 'Instantiating Arguments'),
+  ('2015-01-14', 'The Privilege of Earning To Give'),
+  ('2014-12-25', "We Haven't Uploaded Worms"),
+  ('2014-09-08', 'Policies'),
+  ('2014-08-25', 'Persistent Idealism'),
+  ('2014-07-14', 'The Economics of a Studio CD'),
+  ('2014-07-01', 'Preparing for our CD'),
+  ('2014-06-25', 'Optimizing Looks Weird'),
+  ('2014-02-27', 'Playing to Lose'),
+  ('2014-02-18', 'Dance Weekend and Festival Survey'),
+  ('2014-01-26', 'Contra Dance Band Size'),
+  ('2013-12-28', 'Getting Booked For Dances'),
+  ('2013-10-22', 'OK to Have Kids?'),
+  ('2013-10-01', 'John Wesley on Earning to Give'),
+  ('2013-08-22', 'Rationing With Small Reserves'),
+  ('2013-08-13', 'Simplest Interesting Game'),
+  ('2013-07-21', 'Against Singular Ye'),
+  ('2013-06-25', 'Is Pandora Really Exploiting Artists?'),
+  ('2013-06-14', 'Is Unicode Safe?'),
+  ('2013-06-06', 'Survey of Historical Stock Advice'),
+  ('2013-05-28', 'Haiti and Disaster Relief'),
+  ('2013-05-11', 'Keeping Choices Donation Neutral'),
+  ('2013-04-01', 'The Unintuitive Power Laws of Giving'),
+  ('2013-03-06', 'Getting Myself to Eat Vegetables'),
+  ('2013-01-22', 'Debt Relief Is Bad Means Testing'),
+  ('2012-10-30', 'Contra Cliquishness: Healthy?'),
+  ('2012-10-03', 'Parenting and Happiness'),
+  ('2012-09-21', 'Make Your Giving Public'),
+  ('2012-09-17', 'Record Your Playing'),
+  ('2012-09-11', 'Objecting to Situations'),
+  ('2012-08-08', 'Artificial Recordings and Unrealistic Standards'),
+  ('2012-08-07', 'Singular They: Towards Ungendered Language'),
+  ('2012-07-14', 'Exercises'),
+  ('2012-06-17', 'Altruistic Kidney Donation'),
+  ('2012-03-29', 'Teach Yourself any Instrument'),
+  ('2012-03-28', 'Brain Preservation'),
+  ('2012-03-24', 'Insurance and Health Care'),
+  ('2012-02-13', 'You Should Be Logging Shell History'),
+  ('2012-02-03', 'Octaveless Bass Notes'),
+  ('2011-12-29', 'Instrument Complexity and Automation'),
+  ('2011-09-23', 'Letter From Our Crazy Ex-Landlord'),
+  ('2011-12-03', 'A Right to Publicy'),
+  ('2011-11-13', 'Personal Consumption Changes As Charity'),
+  ('2011-11-02', 'Whole Brain Emulation and Nematodes'),
+  ('2011-10-15', 'Local Action and Remote Donation'),
+  ('2011-10-04', 'Online Community Aging'),
+  ('2011-09-11', 'Mandolin Microphone Placement'),
+  ('2011-09-09', 'Charities and Waste'),
+  ('2011-08-08', 'Negative Income Tax'),
+  ('2011-07-27', 'Belief Listing Project: Giving'),
+  ('2011-07-18', 'Contra Dance Unplugged'),
+  ('2011-07-15', 'Undisabling A Keyboard\'s Internal Speakers'),
+  ('2011-06-18', 'Boston Apartment Prices Map'),
+  ('2011-04-12', 'Giving Up On Privacy'),
+  ('2011-01-08', 'Significant Whitespace In Expressions'),
+  ('2010-12-05', 'Abstracting Compassion'),
+  ('2010-11-17', 'Transit Service Quality Map'),
+  ('2010-07-23', 'Tracking Down a Statistic: Does Fairtrade Work?'),
+  ('2010-05-25', 'Putting Words Off-Limits'),
 ]
 
-COMMENT_SCRIPT = r"""
-<script type="text/javascript">
+SNIPPETS = {
+  'meta_viewport': 'width=device-width,minimum-scale=1,initial-scale=1',
+
+  'google_analytics': r'''<span>
+<script async="" src="https://www.googletagmanager.com/gtag/js?id=UA-27645543-1"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){
+  dataLayer.push(arguments);
+}
+gtag('js', new Date());
+gtag('config', 'UA-27645543-1');
+</script>
+</span>''',
+
+  'comment_script': r'''<script type="text/javascript">
 var last_visit = document.cookie.replace(/(?:(?:^|.*;\s*)jtk_last_visit\s*\=\s*([^;]*).*$)|^.*$/, "$1");
 var current_time = new Date().getTime();
 var one_year_gmt_str = new Date(current_time + 31536000000).toGMTString();
@@ -329,115 +436,84 @@ function pullComments(wsgiUrl, serviceName) {
     });
   });
 }
-</script>
-"""
+</script>''',
+
+  'rss_header': '''\
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+
+  <channel>
+    <atom:link href="%s" rel="self" type="application/rss+xml" />
+    <title>%s</title>
+    <link>%s</link>
+    <description>%s</description>
+    <language>en-us</language>''' % (
+      config.full_url(config.rss),
+      config.rss_description,
+      config.full_url(config.posts),
+      config.rss_description),
+
+  'rss_footer': '</channel></rss>',
+
+  'css': '''\
+.comment-thread {margin: 0px 0px 0px 30px;}
+.content {max-width:550px;}
+.comment {max-width: 448px;
+          overflow: hidden;
+          overflow-wrap: break-word;
+          margin-top: 0px;
+          margin-bottom: -1px;
+          border-top:1px solid black;
+          border-bottom:1px solid black;
+          padding-top:10px;}
+.newcomment { border-left: 1px solid black;
+              padding-left: 5px; }
+.commentlink {font-style: italic;
+              font-size: 80%;
+              visibility: hidden;}
+.comment:hover .commentlink {visibility: visible}
+.highlighted {background-color: lightyellow;}
+@media (min-width: 850px) {
+  #top-posts { padding-left: 30px;
+               position: absolute;
+               top: 30px;
+               left: 600px;
+               max-width: 200px;}}
+#title-date-tags { width: 100% }
+#wrapper { margin: 8px}
+#title-date-tags h3 { margin: 0 }''',
+
+  'amp_boilerplate': '<style amp-boilerplate="">body{-webkit-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-moz-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-ms-animation:-amp-start 8s steps(1,end) 0s 1 normal both;animation:-amp-start 8s steps(1,end) 0s 1 normal both}@-webkit-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-moz-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-ms-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-o-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}</style>',
+
+  'amp_noscript_boilerplate': '<noscript><style amp-boilerplate="">body{-webkit-animation:none;-moz-animation:none;-ms-animation:none;animation:none}</style></noscript>'
+
+}
 
 def edit_front_page(front_page_list):
-  outf = open(FRONT_PAGE_TMP, "w")
-  inf = open(FRONT_PAGE, "r")
-
-  skipping = False
-  for line in inf:
-    if "<!-- end recent thoughts -->" in line:
-      for entry in front_page_list:
-        outf.write("\n".join(entry))
-        outf.write("\n")
+  front_page = config.front_page_fname()
+  front_page_tmp = config.new(config.front_page_fname())
+  with open(front_page) as inf:
+    with open(front_page_tmp, 'w') as outf:
       skipping = False
+      for line in inf:
+        if '<!-- end recent thoughts -->' in line:
+          for entry in front_page_list:
+            outf.write(entry)
+            outf.write('\n')
+          skipping = False
 
-    if not skipping:
-      outf.write(line)
+        if not skipping:
+          outf.write(line)
 
-    if "<!-- begin recent thoughts -->" in line:
-      skipping = True
+        if '<!-- begin recent thoughts -->' in line:
+          skipping = True
 
-  assert not skipping
+      assert not skipping
 
-  outf.close()
-  inf.close()
-
-  os.rename(FRONT_PAGE_TMP, FRONT_PAGE)
+  os.rename(front_page_tmp, front_page)
 
 def quote(s):
-  return s.replace("&", "&amp;").replace("<","&lt;").replace(">", "&gt;").replace('"', '&quot;')
-
-def write_header(w, d=None):
-  w('<?xml version="1.0" encoding="ISO-8859-1" ?>')
-  w('<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">')
-  w('')
-  w('  <channel>')
-  w('    <atom:link href="%s" rel="self" type="application/rss+xml" />' % RSS_URL)
-  w("    <title>Jeff Kaufman's Writing</title>")
-  w("    <link>http://www.jefftk.com/news/</link>")
-  w("    <description>Jeff Kaufman's Writing</description>")
-  w("    <language>en-us</language>")
-
-def write_footer(w):
-  w("  </channel>")
-  w("</rss>")
-
-ITEM_RE = re.compile(r'<a name="([^"]*)"></a><h3>([^:]*):</h3>')
-TITLE_RE = re.compile(r'<h3>([^>]*)</h3>')
-TAGS_RE = re.compile(r'<h4>Tags:([^>]*)</h4>')
-
-def items(s):
-
-  cur_item = []
-
-  found_title = False
-
-  def sendout():
-    if not found_title:
-      cur_item.append("untitled")
-    cur_item.append("".join(cur_text))
-    cur_item.append(set(cur_tags))
-    x = cur_item[:]
-
-    del cur_item[:]
-    del cur_text[:]
-    del cur_tags[:]
-
-    return x
-
-  cur_text = []
-  cur_tags = []
-  for line in s:
-
-    match = ITEM_RE.search(line)
-    if match:
-      if cur_item:
-        yield sendout()
-        found_title = False
-
-      link_anchor, date = match.groups()
-      cur_item.append(link_anchor)
-      cur_item.append(date)
-
-    elif not cur_item:
-      pass
-
-    else:
-      if not found_title:
-        match = TITLE_RE.search(line)
-        if match:
-          cur_item.append(match.groups()[0])
-          found_title = True
-          continue
-
-      tags_match = TAGS_RE.search(line)
-      if tags_match:
-        cur_tags=[x.strip() for x in
-                  tags_match.groups()[0].split(",")]
-        continue
-
-      line = line.replace('<div class="pt">', '')
-      line = line.replace('<DIV CLASS="PT">', '')
-      line = line.replace('</div>', '')
-      if line.startswith("<hr>"):
-        break
-      cur_text.append(line)
-
-  if cur_item:
-    yield sendout()
+  return s.replace('&', '&amp;').replace('<','&lt;').replace('>', '&gt;').replace('"', '&quot;')
 
 def title_to_url_component(s):
   s = s.lower()
@@ -448,146 +524,483 @@ def title_to_url_component(s):
   s = re.sub("-*$", "", s)
   return s
 
-def make_link(pretty_name):
-  return "%s/%s" % (P_URL, pretty_name)
+def dimensions(link_ondisk):
+  link_ondisk_dims = '%s.dimensions' % link_ondisk
+  dims = None
+  if os.path.exists(link_ondisk_dims):
+    with open(link_ondisk_dims) as inf:
+      dims = inf.read().strip()
+  if not dims:
+    identify_output = subprocess.check_output(['identify', link_ondisk])
+    dims = identify_output.split()[2].decode('utf-8')
+    with open(link_ondisk_dims, 'w') as outf:
+      outf.write(dims)
+  width, height = dims.split('x')
+  return int(width), int(height)
 
-updates = []
+class Update:
+  def __init__(self, slug, post, element):
+    self.anchor = 'update-%s' % slug
+    self.slug = slug
+    self.year, self.numeric_month, self.day = slug.split('-')
+    self.short_month = {'01': 'Jan',
+                        '02': 'Feb',
+                        '03': 'Mar',
+                        '04': 'Apr',
+                        '05': 'May',
+                        '06': 'Jun',
+                        '07': 'Jul',
+                        '08': 'Aug',
+                        '09': 'Sep',
+                        '10': 'Oct',
+                        '11': 'Nov',
+                        '12': 'Dec'}[self.numeric_month]
+    self.post = post
+    self.element = element
+    self.title = 'Update %s' % slug
 
-pretty_names = {}
-titles = {}
-title_and_link = []
-with open(IN_HTML) as inf:
-  post_n = 0
-  for link_anchor, date, title, raw_text, tags in items(open(IN_HTML)):
-    pretty_name = title_to_url_component(title)
+  def link(self):
+    return self.post.link() + '#%s' % self.anchor
 
-    if pretty_name in titles:
-      raise Exception("'%s' for %s turns to %s which is a duplicate" % (
-          title, link_anchor, pretty_name))
-    titles[pretty_name] = 1
-    pretty_names[link_anchor] = pretty_name
-    if "notyet" not in tags:
-      title_and_link.append((
-        title, "%s/%s" % (P_URL, pretty_name)))
+  def rss(self):
+    html = etree.tostring(
+      self.element, method='html', pretty_print=True).decode('utf-8')
+    html = re.sub('.*(<b>Update %s</b>)', '', html)
+    if len(html) > config.max_update_chars:
+      html = html[:500] + '...'
 
-    for match in re.findall(r'<b>Update \d\d\d\d-\d\d-\d\d</b>.{0,300}',
-                            raw_text, re.DOTALL):
+    return '''
+<item>
+  <guid>%s</guid>
+  <title>%s</title>
+  <link>%s</link>
+  <category>update_rss</category>
+  <pubDate>%s %s %s 08:00:00 EST</pubDate>
+  <description>%s</description>
+</item>''' % (
+  config.relative_url(self.link()),
+  self.title,
+  config.full_url(self.link()),
+  self.day, self.short_month, self.year,
+  quote(html))
 
-      update_slug, = re.match(r'<b>Update (\d\d\d\d-\d\d-\d\d)</b>',
-                              match).groups()
-      update_anchor = 'update-%s' % update_slug
+class Post:
+  def __init__(self, slug, date, title, tags, element):
+    self.slug = slug
+    self.date = date
+    self.title = title
+    self.published = config.notyet_token not in tags
+    tags = [x for x in tags if x != config.notyet_token]
+    self.name = title_to_url_component(title)
+    self.element = element
+    self.updates = {}
 
-      beginning, end = match.split('</b>', 1)
+    # these are filled in externally for published posts
+    self.older_post = None
+    self.newer_post = None
+    # this is filled in externally for all posts
+    self.posts_by_slug = None
 
-      end_short = end.split('<p>')[0].split('</div>')[0]
+    self.month, self.day, self.year = date.split()[1:4]
+    self.short_month = self.month[:3]
 
-      update_text = beginning + '</b>' + end_short + '...'
+    services = []
+    for tag in tags:
+      if '/' not in tag:
+        continue
+      service, token = tag.split('/', 1)
+      if service == 'g+':
+        services.append((1, 'google plus', 'gp',
+                         'https://plus.google.com/%s/posts/%s' % (
+                           config.google_plus_uid, token), token))
+      elif service == 'fb':
+        if token.startswith('note/'):
+          token = token[len('note/'):]
+          fb_link = 'https://www.facebook.com/note.php?note_id=%s' % token
+        else:
+          token = token.split('_')[-1]
+          fb_link = 'https://www.facebook.com/jefftk/posts/%s' % token
+        services.append((2, 'facebook', 'fb', fb_link, token))
+      elif service == 'lw':
+        lw_link = 'https://lesswrong.com/lw/%s' % token
+        services.append((3, 'lesswrong', 'lw', lw_link, token))
+      elif service == 'ea':
+        ea_link = 'http://effective-altruism.com/ea/%s' % token
+        services.append((4, 'the EA Forum', 'ea', ea_link, token))
+      elif service == 'r':
+        subreddit, post_id = token.split('/')
+        r_link = 'https://www.reddit.com/r/%s/comments/%s' % (
+          subreddit, post_id)
+        services.append((5, 'r/%s' % subreddit, 'r', r_link, token))
+      elif service == 'hn':
+        services.append((6, 'hacker news', 'hn',
+                         'https://news.ycombinator.com/item?id=%s' % token,
+                         token))
 
-      update_link = '%s#%s' % (make_link(pretty_name), update_anchor)
+    # sort by and then strip off priorities
+    self.services = [x[1:] for x in sorted(services)]
+    self.tags = set(x for x in tags if '/' not in x)
 
-      updates.append((update_slug, update_link, update_text))
+    for possible_update in element.findall('.//b'):
+      update_text = possible_update.text
+      if update_text and update_text.startswith('Update '):
+        match = re.match(r'Update (\d\d\d\d-\d\d-\d\d)', update_text)
+        if match:
+          update_slug, = match.groups()
+          update = Update(update_slug, self, possible_update.getparent())
+          if update.anchor in self.updates:
+            raise Exception('Duplicate anchor %s on %s' % (
+              update.anchor, title))
+          self.updates[update.anchor] = update
 
-updates.sort(reverse=True)
+          # make it possible to link to this update
+          parent = possible_update.getparent()
+          parent.insert(parent.index(possible_update),
+                        etree.Element('a', name=update.anchor))
 
-def best_posts(earlier, later):
-  best = [
-    ('2016-06-20', 'Mike Mulligan and His Obsolete Technology'),
-    ('2016-06-15', 'Reading about guns'),
-    ('2016-02-26', 'Make Buses Dangerous'),
-    ('2016-01-16', 'Tiny House Movement'),
-    ('2015-11-29', 'Giving vs Doing'),
-    ('2015-11-20', 'Negative News'),
-    ('2015-11-09', 'Thoughtful Non-consumption'),
-    ('2015-10-20', 'How Bad Is Dairy?'),
-    ('2015-10-07', 'Mercury Spill'),
-    ('2015-08-11', 'Why Global Poverty?'),
-    ('2015-07-24', 'Lyme Disease By County'),
-    ('2015-06-27', 'Cheap College via Marrying'),
-    ('2015-06-17', 'Subway Synchronization Protocol'),
-    ('2015-05-14', 'Singular They FAQ'),
-    ('2015-04-12', 'Instantiating Arguments'),
-    ('2015-01-14', 'The Privilege of Earning To Give'),
-    ('2014-12-25', "We Haven't Uploaded Worms"),
-    ('2014-09-08', 'Policies'),
-    ('2014-08-25', 'Persistent Idealism'),
-    ('2014-07-14', 'The Economics of a Studio CD'),
-    ('2014-07-01', 'Preparing for our CD'),
-    ('2014-06-25', 'Optimizing Looks Weird'),
-    ('2014-02-27', 'Playing to Lose'),
-    ('2014-02-18', 'Dance Weekend and Festival Survey'),
-    ('2014-01-26', 'Contra Dance Band Size'),
-    ('2013-12-28', 'Getting Booked For Dances'),
-    ('2013-10-22', 'OK to Have Kids?'),
-    ('2013-10-01', 'John Wesley on Earning to Give'),
-    ('2013-08-22', 'Rationing With Small Reserves'),
-    ('2013-08-13', 'Simplest Interesting Game'),
-    ('2013-07-21', 'Against Singular Ye'),
-    ('2013-06-25', 'Is Pandora Really Exploiting Artists?'),
-    ('2013-06-14', 'Is Unicode Safe?'),
-    ('2013-06-06', 'Survey of Historical Stock Advice'),
-    ('2013-05-28', 'Haiti and Disaster Relief'),
-    ('2013-05-11', 'Keeping Choices Donation Neutral'),
-    ('2013-04-01', 'The Unintuitive Power Laws of Giving'),
-    ('2013-03-06', 'Getting Myself to Eat Vegetables'),
-    ('2013-01-22', 'Debt Relief Is Bad Means Testing'),
-    ('2012-10-30', 'Contra Cliquishness: Healthy?'),
-    ('2012-10-03', 'Parenting and Happiness'),
-    ('2012-09-21', 'Make Your Giving Public'),
-    ('2012-09-17', 'Record Your Playing'),
-    ('2012-09-11', 'Objecting to Situations'),
-    ('2012-08-08', 'Artificial Recordings and Unrealistic Standards'),
-    ('2012-08-07', 'Singular They: Towards Ungendered Language'),
-    ('2012-07-14', 'Exercises'),
-    ('2012-06-17', 'Altruistic Kidney Donation'),
-    ('2012-03-29', 'Teach Yourself any Instrument'),
-    ('2012-03-28', 'Brain Preservation'),
-    ('2012-03-24', 'Insurance and Health Care'),
-    ('2012-02-13', 'You Should Be Logging Shell History'),
-    ('2012-02-03', 'Octaveless Bass Notes'),
-    ('2011-12-29', 'Instrument Complexity and Automation'),
-    ('2011-09-23', 'Letter From Our Crazy Ex-Landlord'),
-    ('2011-12-03', 'A Right to Publicy'),
-    ('2011-11-13', 'Personal Consumption Changes As Charity'),
-    ('2011-11-02', 'Whole Brain Emulation and Nematodes'),
-    ('2011-10-15', 'Local Action and Remote Donation'),
-    ('2011-10-04', 'Online Community Aging'),
-    ('2011-09-11', 'Mandolin Microphone Placement'),
-    ('2011-09-09', 'Charities and Waste'),
-    ('2011-08-08', 'Negative Income Tax'),
-    #('2011-08-07', 'Contra Dance Calling With Lights'),
-    ('2011-07-27', 'Belief Listing Project: Giving'),
-    ('2011-07-18', 'Contra Dance Unplugged'),
-    ('2011-07-15', 'Undisabling A Keyboard\'s Internal Speakers'),
-    ('2011-06-18', 'Boston Apartment Prices Map'),
-    ('2011-04-12', 'Giving Up On Privacy'),
-    ('2011-01-08', 'Significant Whitespace In Expressions'),
-    ('2010-12-05', 'Abstracting Compassion'),
-    ('2010-11-17', 'Transit Service Quality Map'),
-    ('2010-07-23', 'Tracking Down a Statistic: Does Fairtrade Work?'),
-    ('2010-05-25', 'Putting Words Off-Limits'),
-    #('2009-09-29', 'The \'Expand This Here\' Operator'),
-    # ('2009-03-11', 'Introducing icdiff'),
-    ]
+    for img in element.findall('.//img'):
+      src = img.get('src')
+      if src and src.startswith('/'):
+        src_ondisk = config.full_filename(src[1:])
+        width, height = dimensions(src_ondisk)
+        if bool(img.get('width')) != bool(img.get('height')):
+          raise Exception('bad image %s in %s' % (
+            etree.tostring(img, method='html'), title))
+        if not img.get('width'):
+          img.set('width', str(width))
+          img.set('height', str(height))
+          max_width = 95.0
+          img.set('style', 'max-width:%.1fvw; max-height:%.1fvw' %
+                  (max_width, max_width * height / width))
 
-  random.shuffle(best)
+        if not img.get('srcset'):
+          fname, ext = src.rsplit('.', 1)
+          if ext in ['jpg', 'png']:
+            srcsets = []
+            for sizing in ['2x', '3x', '4x']:
+              newsrc = '%s-%s.%s' % (fname, sizing, ext)
+              for suffix in ['-sm', '-small', '-tn', '-1x']:
+                if fname.endswith(suffix):
+                  newsrc = '%s-%s.%s' % (fname[:-len(suffix)], sizing, ext)
+              newsrc_ondisk = config.full_filename(newsrc)
+              if os.path.exists(newsrc_ondisk):
+                newwidth, _ = dimensions(newsrc_ondisk)
+                srcsets.append('%s %sw' % (newsrc, newwidth))
+            if srcsets:
+              srcsets.insert(0, '%s %sw' % (src, width))
+              img.set('srcset', ','.join(srcsets))
 
-  best_posts_html = '<p>More Posts:</p><ul>%s</ul>' % (
-    "".join('<li><p><a href="%s/%s">%s</a></li>' % (
-      P_URL, pretty_names[post_date], post_title)
-            for (post_date, post_title) in random.sample(best,5)))
+  def link(self):
+    return os.path.join(config.posts, self.name)
 
-  for section, info in [("Older Post", earlier),
-                        ("Newer Post", later)]:
-    if info:
-      title, link = info
-      best_posts_html = "%s<p>%s:</p><ul><li><p><a href='%s'>%s</a></ul>" % (
-        best_posts_html, section, link, title)
+  def bare_html(self):
+    return self.stringify_(self.element)
 
-  return best_posts_html
+  def blog_entry_summary(self):
+    element = deepcopy(self.element)
+    removing = False
+    for child in element.findall('.//*'):
+      if child.text and config.break_token in child.text:
+        child.text, _ = child.text.split(config.break_token)
+        child.text += '%s'
+        removing = True
+        child.tail = ''
+      elif child.tail and config.break_token in child.tail:
+        child.tail, _ = child.tail.split(config.break_token)
+        child.tail += '%s'
+        removing = True
+      elif removing:
+        child.getparent().remove(child)
 
+    link = config.relative_url(self.link())
+    append_more = "%s<a href='%s'>%s...</a>" % (
+      ' ' if removing else '<p>', link, 'more' if removing else 'full post')
+    html = self.stringify_(element)
+    if removing:
+      html = html % append_more
+    else:
+      html = html + append_more
+
+    return '''\
+<div class=blog-entry-summary>
+  <div class=blog-entry-date><a
+     class=invisible-link href='%s'>%s %s, %s</a></div>
+  <div class=blog-entry-title><a class=invisible-link href='%s'>%s</a></div>
+  <div class=blog-entry-beginning>
+    <p>%s
+  </div>
+</div>''' % (link, self.month, tidy_day(self.day), self.year,
+             link, self.title, html)
+
+  def html(self, is_amp):
+    element = deepcopy(self.element)
+
+    if not self.published:
+      element.insert(0, parse('<p><i>draft post</i></p>'))
+
+    amp_styles = set()
+
+    if is_amp:
+      for styled in element.findall('.//*[@style]'):
+        style = styled.attrib.pop('style')
+        auto_id = 'inline-style-%s' % abs(hash(style))
+        amp_styles.add('#%s {%s}' % (auto_id, style))
+        assert not styled.get('id')
+        styled.set('id', auto_id)
+
+      for style_block in element.findall('.//style'):
+        amp_styles.add(style_block.text)
+        style_block.getparent().remove(style_block)
+
+      for img in element.findall('.//img'):
+        img.tag = 'amp-img'
+        img.set('layout', 'responsive')
+
+    no_tags_no_ws = re.sub('<[^>]*>', '',
+                           re.sub('\s+',' ',
+                                  re.sub('<style>[^<]*</style>', '',
+                                         self.bare_html()))).strip()
+
+    head = etree.Element('head')
+    head.append(etree.Element(
+      'meta', name='description', content=no_tags_no_ws[:400]))
+    head.append(etree.Element(
+      'meta', name='keywords', content=', '.join(self.tags)))
+    head.append(etree.Element(
+      'meta', name='viewport', content=SNIPPETS['meta_viewport']))
+    head.append(etree.Element('meta', charset='utf-8'))
+
+    if is_amp:
+      head.append(etree.Element(
+        'script', async='', src='https://cdn.ampproject.org/v0.js'))
+
+    if is_amp:
+      head.append(etree.Element('link', rel='canonical',
+                                href=config.relative_url(self.link())))
+    else:
+      head.append(etree.Element('link', rel='amphtml-draft', href='%s.amp' % (
+        config.relative_url(self.link()))))
+
+    title = etree.Element('title')
+    title.text = self.title
+    head.append(title)
+
+    if not is_amp:
+      head.append(parse(SNIPPETS['google_analytics']))
+
+    # TODO: get GA into amp
+    # TODO: look into ld json schema for amp
+
+    if is_amp:
+      head.append(parse(SNIPPETS['amp_boilerplate']))
+      head.append(parse(SNIPPETS['amp_noscript_boilerplate']))
+
+    head.append(parse(
+      '<style%s>%s%s</style>' % (
+        ' amp_custom=""' if is_amp else '',
+        SNIPPETS['css'],
+        '\n'.join(sorted(amp_styles)))))
+
+    body = etree.Element('body')
+    wrapper = etree.Element('div', id='wrapper')
+
+    wrapper.append(parse(links_partial()))
+    wrapper.append(etree.Element('hr'))
+
+    content = etree.Element('div')
+    content.set('class', 'content')
+
+    fancy_date = '%s %s, %s' % (self.month, tidy_day(self.day), self.year)
+
+    tag_block = ''
+    if self.tags:
+      tag_block = '<span>%s</span>' % ', '.join(
+        '<i><a href="/news/%s">%s</a></i>' % (tag, tag)
+        for tag in self.tags)
+
+    content.append(parse('''<table id="title-date-tags">
+    <tr><td valign="top" rowspan="2"><h3><a href="%s">%s</a></h3></td>
+        <td align="right" valign="top">%s</td></tr>
+    <tr><td align="right" valign="top">%s</td></tr></table>''' % (
+      config.relative_url(self.link()), self.title, fancy_date, tag_block)))
+
+    content.append(element)
+
+    if self.services:
+      content.append(parse('<p>Comment via: %s</p>\n' % (
+        ', '.join('<a href="%s">%s</a>' % (service_link, service_name)
+                  for service_name, service_abbr, service_link, service_tag
+                  in self.services))))
+      if not is_amp:
+        content.append(parse('''\
+<div id="comments">
+%s
+<script type="text/javascript">
+%s
+</script>
+</div>''' % (
+  SNIPPETS['comment_script'],
+  '\n'.join(
+    "pullComments('/wsgi/json-comments/%s/%s', '%s');\n" % (
+      service_abbr, service_tag, service_name)
+    for service_name, service_abbr, service_link, service_tag
+    in self.services))))
+
+    wrapper.append(content)
+
+    best_posts = [self.posts_by_slug[slug]
+                  for slug, _ in random.sample(BEST_POSTS, 5)]
+
+    best_posts_html = '<p>More Posts:</p><ul>%s</ul>' % (
+      ''.join('<li><p><a href="%s">%s</a></p></li>' % (
+        config.relative_url(other.link()),
+        other.title) for other in best_posts))
+    for section, other in [('Older Post', self.older_post),
+                          ('Newer Post', self.newer_post)]:
+      if other:
+        best_posts_html = "%s<p>%s:</p><ul><li><p><a href='%s'>%s</a></p></li></ul>" % (
+          best_posts_html, section, config.relative_url(other.link()),
+          other.title)
+
+    wrapper.append(parse(
+      '<div id="top-posts">%s</div>' % best_posts_html))
+
+    wrapper.append(etree.Element('hr'))
+    wrapper.append(parse(links_partial()))
+
+    body.append(wrapper)
+
+    page = etree.Element('html', lang='en')
+    if is_amp:
+      page.set('amp', 'amp')
+    page.append(head)
+    page.append(body)
+
+    return '<!doctype>%s' % self.stringify_(page)
+
+  def stringify_(self, element):
+    # don't include the wrapping div
+    html = b'\n'.join(etree.tostring(x, method='html', pretty_print=True)
+                      for x in element.findall('*')).decode('utf-8')
+    return html.replace(config.break_token, '')
+
+  def rss(self):
+    element = deepcopy(self.element)
+    if self.services:
+      comments_links = ', '.join(
+        '<a href="%s">%s</a>' % (
+          service_link, service_name)
+        for (service_name, _, service_link, _) in self.services)
+      element.append(parse('<p><i>Comment via: %s</i>' %
+                                      comments_links))
+
+    html = self.stringify_(element)
+
+    return '''
+<item>
+  <guid>%s</guid>
+  <title>%s</title>
+  <link>%s</link>
+  %s
+  <pubDate>%s %s %s 08:00:00 EST</pubDate>
+  <description>%s</description>
+</item>''' % (
+  config.relative_url(self.link()),
+  self.title,
+  config.full_url(self.link()),
+  '\n  '.join('<category>%s</category>' % tag
+            for tag in sorted(self.tags)),
+  self.day, self.short_month, self.year,
+  quote(html))
+
+def parse(s):
+  return lxml.html.fragment_fromstring(s, create_parent=False)
+
+def parsePosts():
+  posts = []
+  published_posts = []
+  posts_by_name = {}
+  posts_by_slug = {}
+
+  with open(config.full_filename(config.in_html)) as inf:
+    tree = etree.parse(inf, etree.HTMLParser())
+    body = tree.find('body')
+
+    prev = None
+    prev_prev = None
+
+    for element in body.findall('*'):
+      # Posts are divs
+      # Post metadata is right before each div, in first an a and then an h3
+      # Yes, this is silly, not changing it now.
+
+      if element.tag == 'div':
+        assert prev.tag == 'h3'
+        assert prev_prev.tag == 'a', element.findall('*')[0].text
+
+        slug = prev_prev.get('name')
+        date = prev.text[:-1]
+
+        post_elements = element.findall('*')
+        title_h3 = post_elements[0]
+        tags_h4 = post_elements[1]
+        assert title_h3.tag == 'h3'
+        title = title_h3.text
+        assert tags_h4.tag == 'h4'
+        tags_raw = tags_h4.text
+        assert tags_raw.startswith('Tags:')
+        tags = [x.strip() for x in tags_raw[len('Tags:'):].split(',')]
+
+        # Remove the title and tags now that we're done with them.
+        element.remove(title_h3)
+        element.remove(tags_h4)
+
+        if tags_h4.tail:
+          # don't lose this text
+          first = etree.Element('span')
+          first.text = tags_h4.tail
+          element.insert(0, first)
+
+        post = Post(slug, date, title, tags, element)
+        posts.append(post)
+        if post.published:
+          published_posts.append(post)
+
+        if post.name in posts_by_name:
+          raise Exception('Duplicate post title: %r and %r' % (
+            posts_by_name[post.name].title, post.title))
+        posts_by_name[post.name] = post
+
+        if post.slug in posts_by_slug:
+          raise Exception('Duplicate post slug: %r for %r and %r' % (
+            post.slug, posts_by_slug[post.slug].title, post.title))
+        posts_by_slug[post.slug] = post
+        post.posts_by_slug = posts_by_slug
+
+      prev_prev = prev
+      prev = element
+
+  # Now that we've loaded all the posts, update links to use pretty
+  # names and not slugs.
+  #for post in posts:
+  #  for anchor in post.element.findall('.//a'):
+  #    href = anchor.get('href')
+  #    if href:
+  #      match = re.match(r'(\d\d\d\d-\d\d-\d\d)', href)
+  #      if match:
+  #        slug, = match.groups()
+  #        new_href = config.relative_url(posts_by_slug[slug].link())
+  #        anchor.set('href', new_href)
+
+  for published_post_earlier, published_post_later in zip(
+      published_posts[1:], published_posts):
+    published_post_earlier.newer_post = published_post_later
+    published_post_later.older_post = published_post_earlier
+
+  return posts
 
 def links_partial():
-  sep = '&nbsp;&nbsp;::&nbsp;&nbsp;'
+  sep = '&#160;&#160;::&#160;&#160;'
   s = sep.join(
     ('<a href="/" rel="author">Jeff Kaufman</a>',
      '<a href="/p/index">Posts</a>',
@@ -595,509 +1008,152 @@ def links_partial():
      # can't use rewind symbol because apple makes it ugly
      '<span><a href="__REVERSE_RSS__">&#9666;&#9666;RSS</a>',
      '</span><a href="/contact">Contact</a>'))
-  s += "\n"
-  return "<div class=headfoot>%s</div>" % s
+  s += '\n'
+  return '<div class="headfoot">%s</div>' % s
 
-def write_rss_item_begin(n, w_partial, w_full, title, link, tags):
-  for w in [w_partial, w_full]:
-    if w == w_partial and n >= RSS_MAX:
-      continue
+def delete_old_staging():
+  for modifier in [config.new, config.prev]:
+    for directory in [config.out, config.posts]:
+      full_directory = config.full_filename(modifier(directory))
+      try:
+        shutil.rmtree(full_directory)
+      except FileNotFoundError:
+        pass
 
-    w('    <item>')
-    w('      <guid>%s</guid>' % link)
-    w("      <title>%s</title>" % title)
-    w("      <link>%s%s</link>" % (SITE_URL,link))
-    for tag in sorted(tags):
-      w("      <category>%s</category>" % tag)
+    for fname in [config.rss, config.rss_full]:
+      try:
+        full_fname = config.full_filename(modifier(fname))
+      except FileNotFoundError:
+        pass
 
-def write_rss_item_end(n, w_partial, w_full, day, month, year, t):
-  for w in [w_partial, w_full]:
-    if w == w_partial and n >= RSS_MAX:
-      continue
-
-    w("      <pubDate>%s %s %s 08:00:00 EST</pubDate>" % (day, month[:3], year))
-    w("      <description>%s</description>" % quote(t))
-    w("    </item>")
-
-def ampify(x):
-  return x.replace('<img ', '<amp-img ')
+def make_new_staging():
+  for directory in [config.out, config.posts]:
+    os.mkdir(config.full_filename(config.new(directory)))
 
 def start():
-  rss_out=open(RSS_FNAME, "w")
-  rss_full_out=open(RSS_FULL_FNAME, "w")
-
-  def w_partial(s):
-    rss_out.write(s + "\n")
-  def w_full(s):
-    rss_full_out.write(s + "\n")
-
-  # delete old staging dirs
-  for d in [NEW_OUT_DIR, NEW_P_DIR, PREV_OUT_DIR, PREV_P_DIR]:
-    if os.path.exists(d):
-      shutil.rmtree(d)
-  os.mkdir(NEW_OUT_DIR)
-  os.mkdir(NEW_P_DIR)
-
-  write_header(w_partial)
-  write_header(w_full)
-
-  css = ('.comment-thread {margin: 0px 0px 0px 30px;}'
-         '.content {max-width:550px;}'
-         '.comment {max-width: 448px;'
-         '          overflow: hidden;'
-         '          overflow-wrap: break-word;'
-         '          margin-top: 0px;'
-         '          margin-bottom: -1px;'
-         '          border-top:1px solid black;'
-         '          border-bottom:1px solid black;'
-         '          padding-top:10px;}'
-         '.newcomment { border-left: 1px solid black;'
-         '              padding-left: 5px; }'
-         '.commentlink {font-style: italic;'
-         '              font-size: 80%;'
-         '              visibility: hidden;}'
-         '.comment:hover .commentlink {visibility: visible}'
-         '.highlighted {background-color: lightyellow;}'
-         '@media (min-width: 850px) {'
-         '  #top-posts { padding-left: 30px;'
-         '               position: absolute;'
-         '               top: 30px;'
-         '               left: 600px;'
-         '               max-width: 200px;}}'
-         '#title-date-tags { width: 100% }')
-  amp_css = ('#wrapper { margin: 8px}'
-             '#title-date-tags h3 { margin: 0 }')
-
-  amp_boilerplate = '<style amp-boilerplate>body{-webkit-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-moz-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-ms-animation:-amp-start 8s steps(1,end) 0s 1 normal both;animation:-amp-start 8s steps(1,end) 0s 1 normal both}@-webkit-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-moz-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-ms-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-o-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}</style><noscript><style amp-boilerplate>body{-webkit-animation:none;-moz-animation:none;-ms-animation:none;animation:none}</style></noscript>'
-
-
-  tag_to_items = {}
+  delete_old_staging()
+  make_new_staging()
 
   front_page_list = []
+  tag_to_posts = defaultdict(list)
 
-  all_posts = items(open(IN_HTML))
+  rss_entries = {} # (slug | update_slug-original_slug) -> entry
 
-  prev_pretty_name=""
-  cur_pretty_name=""
-  printed_most_recent=False
+  for post in parsePosts():
+    fname_base = config.full_filename(
+      os.path.join(config.new(config.posts), post.name))
+    fname_slug = config.full_filename(
+      os.path.join(config.new(config.out), post.slug)) + '.html'
+    with open(fname_base + '.html', 'w') as outf:
+      outf.write(post.html(is_amp=False))
+    with open(fname_base + '.amp.html', 'w') as outf:
+      outf.write(post.html(is_amp=True))
+    shutil.copy(fname_base + '.html', fname_slug)
+    st = os.stat(fname_slug)
+    os.chmod(fname_slug, st.st_mode & (stat.S_IRUSR | stat.S_IWUSR))
 
-  post_n = 0
-  for link_anchor, date, title, raw_text, tags in all_posts:
-    prev_pretty_name = cur_pretty_name
-    cur_pretty_name=pretty_names[link_anchor]
-    link = make_link(cur_pretty_name)
+    if post.published:
+      if len(front_page_list) < config.front_page_max:
+        front_page_list.append(post.blog_entry_summary())
 
-    for (f, r) in [("’", "'"),
-                   ("‘", "'"),
-                   ('“', '"'),
-                   ('”', '"')]:
-      raw_text = raw_text.replace(f, r)
+      tags = set(['all']).union(post.tags)
+      for tag in tags:
+        tag_to_posts[tag].append(post)
 
-    raw_text = re.sub(r'<b>Update (\d\d\d\d-\d\d-\d\d)</b>',
-                      r'<a name="update-\1"></a><b>Update \1</b>',
-                      raw_text)
+      rss_entries[post.slug] = post.rss()
+      for update in post.updates.values():
+        rss_entries['%s-%s' % (update.slug, post.slug)] = update.rss()
 
-    def dimensions(link_ondisk):
-      link_ondisk_dims = "%s.dimensions" % link_ondisk
-      if os.path.exists(link_ondisk_dims):
-        with open(link_ondisk_dims) as inf:
-          dims = inf.read().strip()
-      else:
-        identify_output = subprocess.check_output(
-          ["identify", link_ondisk])
-        dims = identify_output.split()[2]
-        with open(link_ondisk_dims, "w") as outf:
-          outf.write(dims)
-      width, height = dims.split("x")
-      return int(width), int(height)
+  rss_entries = reversed([entry for _, entry in sorted(rss_entries.items())])
+  for rss_file in [config.rss, config.rss_full]:
+    with open(config.full_filename(
+        config.new(rss_file)), 'w') as outf:
+      outf.write(SNIPPETS['rss_header'])
+      for n, rss_entry in enumerate(rss_entries):
+        if rss_file == config.rss_full or n < config.rss_max:
+          outf.write(rss_entry)
+      outf.write(SNIPPETS['rss_footer'])
 
-    amp_custom_css_extra = set()
-
-    new_raw_text_html = []
-    new_raw_text_amp = []
-
-    raw_text = raw_text.replace('<img\n', '<img ')
-    raw_text = re.sub('<img *', '\n<img ', raw_text)
-
-    for line in raw_text.split("\n"):
-      amp_line = html_line = line
-      if "<img src=" in line:
-        matches = re.findall('<img src="([^"]*)"', line)
-        if len(matches) == 1:
-          oldlink = matches[0]
-          if oldlink.startswith("/"):
-            fname, ext = oldlink.rsplit(".", 1)
-            oldlink_ondisk = "%s%s" % (SITE_DIR, oldlink)
-            add_attrs = []
-            add_html_attrs = []
-            if not os.path.exists(oldlink_ondisk):
-              print("Missing file %s" % oldlink_ondisk)
-            else:
-              width, height = dimensions(oldlink_ondisk)
-              add_attrs.append("width=%s" % width)
-              add_attrs.append("height=%s" % height)
-              max_width = 95.0
-              add_html_attrs.append("style='max-width:%.1fvw; max-height:%.1fvw'" %
-                                    (max_width, max_width * height / width))
-
-            srcset = None
-            if ext in ["jpg", "png"]:
-              srcsets = []
-              for sizing in ["2x", "3x", "4x"]:
-                newlink = "%s-%s.%s" % (fname, sizing, ext)
-                for suffix in ["-sm", "-small", "-tn", "-1x"]:
-                  if fname.endswith(suffix):
-                    newlink = "%s-%s.%s" % (fname[:-len(suffix)], sizing, ext)
-                newlink_ondisk = "%s%s" % (SITE_DIR, newlink)
-                if os.path.exists(newlink_ondisk):
-                  newwidth, _ = dimensions(newlink_ondisk)
-                  srcsets.append("%s %sw" % (newlink, newwidth))
-              if srcsets:
-                srcsets.insert(0, "%s %sw" % (oldlink, width))
-                add_attrs.append("srcset='%s'" % ",".join(srcsets))
-
-            if add_attrs:
-              html_line = html_line.replace(
-                oldlink+'"',
-                '%s" %s' % (oldlink, " ".join(add_attrs + add_html_attrs)))
-              amp_line = amp_line.replace(
-                oldlink+'"',
-                '%s" %s' % (oldlink, " ".join(add_attrs)))
-
-      if 'style=' in amp_line:
-        amp_line = re.sub("style='([^']*)'", 'style="\\1"', amp_line)
-        for style in re.findall('style="([^"]*)"', amp_line):
-          auto_id = 'inline-style-%s' % abs(hash(style))
-          amp_custom_css_extra.add('#%s {%s}' % (
-            auto_id, style))
-          amp_line = amp_line.replace('style="%s"' % style, 'id=%s' % auto_id)
-
-      new_raw_text_html.append(html_line)
-      new_raw_text_amp.append(amp_line)
-    html_raw_text = "\n".join(new_raw_text_html)
-    amp_raw_text = "\n".join(new_raw_text_amp)
-
-    amp_raw_text = amp_raw_text.replace('\n<img', '<img')
-    html_raw_text = html_raw_text.replace('\n<img', '<img')
-
-    amp_raw_text = re.sub("<img([^>]*)>",
-                          '<amp-img\\1 layout="responsive"></amp-img>',
-                          amp_raw_text)
-
-    if '<style>' in amp_raw_text:
-      # none of my inline styles use <
-      style_re = '<style>([^<]*)</style>'
-      for style_block in re.findall(style_re, amp_raw_text, re.MULTILINE):
-        amp_custom_css_extra.add(style_block)
-      amp_raw_text = re.sub(style_re, '', amp_raw_text)
-
-    if "~~break~~" in raw_text:
-      amp_beginning_text, amp_ending_text = amp_raw_text.split("~~break~~")
-      html_beginning_text, html_ending_text = html_raw_text.split("~~break~~")
-      broke_text = True
+  for tag, tag_posts in tag_to_posts.items():
+    if tag == 'all':
+      rss_link = '/news.rss'
     else:
-      amp_beginning_text = amp_raw_text
-      html_beginning_text = html_raw_text
-      amp_ending_text = ""
-      html_ending_text = ""
-      broke_text = False
+      rss_link = '/news/%s.rss' % tag
 
-    amp_text = "<p>%s%s" % (amp_beginning_text, amp_ending_text)
-    html_text = "<p>%s%s" % (html_beginning_text, html_ending_text)
+    entries = '\n'.join('''\
+<li><a href="%s">
+  <div class=title>%s</div>
+  <div class=date>%s %s, %s</div></a></li>''' % (
+    config.relative_url(post.link()), post.title, post.month,
+    post.day, post.year) for post in tag_posts)
 
-    html_beginning_text = re.sub('<a href=[^>]*><img src=',
-                                 '<a href="' + link + '"><img src=',
-                                 html_beginning_text)
-
-    amp_beginning_text = re.sub('<a href=[^>]*><amp-img src=',
-                                '<a href="' + link + '"><amp-img src=',
-                                amp_beginning_text)
-
-    notyet = "notyet" in tags
-    if notyet:
-      tags.remove("notyet")
-    elif not printed_most_recent:
-      # print the last pretty name in a notyet post
-      # assumes all notyet posts preceed all real posts
-      print "http://www.jefftk.com/p/%s" % prev_pretty_name
-      printed_most_recent = True
-
-    services = []
-    for tag in tags:
-      if '/' not in tag:
-        continue
-      token = tag.split("/", 1)[1]
-      if tag.startswith('g+/'):
-        services.append((1, "google plus", "gp", 'https://plus.google.com/%s/posts/%s' % (GP_UID, token), token))
-      elif tag.startswith('fb/'):
-        if token.startswith("note/"):
-          token = token.replace("note/","")
-          fb_link = "https://www.facebook.com/note.php?note_id=%s" % token
-        else:
-          token = token.replace("status/", "")
-          fb_link = "https://www.facebook.com/jefftk/posts/%s" % token.split("_")[-1]
-        services.append((2, "facebook", "fb", fb_link, token))
-      elif tag.startswith('lw/'):
-        lw_link = "http://lesswrong.com/lw/%s" % token
-        services.append((3, "lesswrong", "lw", lw_link, token))
-      elif tag.startswith('ea/'):
-        ea_link = "http://effective-altruism.com/ea/%s" % token
-        services.append((4, "the EA Forum", "ea", ea_link, token))
-      elif tag.startswith('r/'):
-        subreddit, post_id = token.split('/')
-        r_link = "http://www.reddit.com/r/%s/comments/%s" % (subreddit, post_id)
-        services.append((5, "r/%s" % subreddit, "r", r_link, token))
-      elif tag.startswith('hn/'):
-        services.append((6, "hacker news", "hn", 'https://news.ycombinator.com/item?id=%s' % token, token))
-
-    # sort by and then strip off priorities
-    services = [x[1:] for x in sorted(services)]
-
-    tags = set(x for x in tags if '/' not in x)
-
-    no_tags_no_ws = re.sub('<[^>]*>', '',
-                           re.sub('\s+',' ',
-                                  re.sub('<style>[^<]*</style>', '',
-                                         html_text))).strip()
-    meta = ('<meta name="description" content="%s..." />' % quote(no_tags_no_ws[:400]) + " " +
-            '<meta name="keywords" content="%s" />' % quote(', '.join(tags)) + " " +
-            meta_viewport())
-
-    tag_block = ""
-    if tags:
-      tag_block = ", ".join(
-        '<i><a href="/news/%s">%s</a></i>' % (tag, tag)
-        for tag in tags)
-
-    if services:
-      comments_links = ", ".join('<a href="%s">%s</a>' % (service_link, service_name)
-                                 for (service_name, _, service_link, _) in services)
-      rss_comments_note = "<p><i>Comment via: %s</i>" % comments_links
-    else:
-      rss_comments_note = ""
-
-    if not notyet:
-      write_rss_item_begin(post_n, w_partial, w_full, title, link, tags)
-
-    month, day, year = date.split()[1:4]
-
-    if not notyet:
-      t = html_text + rss_comments_note
-      write_rss_item_end(post_n, w_partial, w_full, day, month, year, t)
-
-    if not notyet:
-      post_n += 1
-
-    if notyet:
-      amp_text = "<i>draft post</i><p>%s" % amp_text
-      html_text = "<i>draft post</i><p>%s" % html_text
-
-    date_number_file = os.path.join(NEW_OUT_DIR, link_anchor + ".html")
-    pretty_name_file = os.path.join(NEW_P_DIR,
-                                    cur_pretty_name + ".html")
-    amp_pretty_name_file = os.path.join(NEW_P_DIR,
-                                        cur_pretty_name + ".amp.html")
-    per_file = open(date_number_file, "w")
-
-    amp = open(amp_pretty_name_file, "w") if cur_pretty_name not in AMP_BLACKLIST else None
-
-    def html_write(s):
-      per_file.write(s)
-
-    def amp_write(s):
-      if amp:
-        amp.write(s)
-
-    def both_write(s):
-      html_write(s)
-      amp_write(s)
-
-    html_write('<html><head>')
-    if amp:
-      html_write('<link rel="amphtml-draft" href="%s.amp">' % link_anchor)
-    amp_write('<!doctype html><html amp lang="en"><head>'
-              '<meta charset="utf-8">'
-              '<script async src="https://cdn.ampproject.org/v0.js"></script>'
-              '<link rel="canonical" href="%s">' % link_anchor)
-    both_write("<title>%s</title>%s" % (title, meta))
-
-    html_write('<style>%s</style>%s' % (css, GA))
-    amp_write(amp_boilerplate)
-    amp_write('<style amp-custom>%s%s%s</style>' % (
-      css, amp_css, ''.join(sorted(amp_custom_css_extra))))
-    #amp_write(ga)
-    #amp_write(ld_json)
-    both_write("</head>")
-
-    both_write('<body><div id=wrapper>')
-    both_write('%s<hr><div class="content">' % links_partial())
-    both_write('<table id=title-date-tags>')
-    both_write('<tr><td valign=top rowspan=2><h3><a href="%s">%s</a></h3>' % (
-        link, title))
-    fancy_date = "%s %s, %s" % (month, tidy_day(day), year)
-    both_write('    <td align=right valign=top>%s' % fancy_date)
-    both_write('<tr><td align=right valign=top>%s</table>' % tag_block)
-
-    html_write(html_text)
-    amp_write(amp_text)
-
-    if services:
-      both_write("<p>Comment via: %s\n" % (
-        ', '.join('<a href="%s">%s</a>' % (service_link, service_name)
-                  for service_name, service_abbr, service_link, service_tag in services)))
-
-      both_write('<div id="comments">')
-      html_write(COMMENT_SCRIPT)
-      html_write('<script type="text/javascript">')
-      for service_name, service_abbr, service_link, service_tag in services:
-        html_write("pullComments('/wsgi/json-comments/%s/%s', '%s');\n" % (
-            service_abbr, service_tag, service_name))
-      html_write('</script>')
-      amp_write('tbd')
-      both_write('</div>')
-
-    earlier, later = None, None
-    i = post_n-1
-    if 0 <= i+1 < len(title_and_link):
-      earlier = title_and_link[i+1]
-    if 0 <= i-1 < len(title_and_link):
-      later = title_and_link[i-1]
-    both_write("<div id=top-posts>%s</div>" % best_posts(earlier, later))
-
-
-    both_write("  <hr>\n")
-    both_write(links_partial())
-    both_write('  </div></body></html>\n')
-
-    per_file.close()
-    if amp:
-      amp.close()
-
-    shutil.copy(date_number_file, pretty_name_file)
-    st = os.stat(date_number_file)
-    os.chmod(date_number_file, st.st_mode & (stat.S_IRUSR | stat.S_IWUSR))
-
-    if not notyet and len(front_page_list) < FRONT_PAGE_MAX:
-      blog_entry_summary = []
-      w = blog_entry_summary.append
-      w("<div class=blog-entry-summary>")
-      w("<div class=blog-entry-date><a class=invisible-link href='%s'>" % link)
-      w("%s %s, %s" % (month, tidy_day(day), year))
-      w("</a></div>")
-      w("<div class=blog-entry-title><a class=invisible-link href='%s'>%s</a></div>" % (link, title))
-      w("<div class=blog-entry-beginning>")
-      w("<p>")
-      w(html_beginning_text)
-
-      if broke_text:
-        w(" <a href='%s'>more...</a>" % link)
-      else:
-        w("<p><a href='%s'>full post...</a>" % link)
-
-      w("</div>")
-      w("</div>")
-      front_page_list.append(blog_entry_summary)
-
-    tags.add("all")
-    for tag in tags:
-      if tag not in tag_to_items:
-        tag_to_items[tag] = []
-      if not notyet:
-        tag_to_items[tag].append((year, month, day, link, title))
-
-  for updates_n, (update_slug, update_link, update_text) in enumerate(updates):
-    write_rss_item_begin(updates_n, w_partial, w_full,
-                         'Update %s' % update_slug,
-                         update_link, ['update_rss'])
-    slug_year, slug_month, slug_day = update_slug.split('-')
-    slug_month_str = {'01': 'Jan',
-                      '02': 'Feb',
-                      '03': 'Mar',
-                      '04': 'Apr',
-                      '05': 'May',
-                      '06': 'Jun',
-                      '07': 'Jul',
-                      '08': 'Aug',
-                      '09': 'Sep',
-                      '10': 'Oct',
-                      '11': 'Nov',
-                      '12': 'Dec'}[slug_month]
-
-    write_rss_item_end(updates_n, w_partial, w_full,
-                       slug_day, slug_month_str, slug_year, update_text)
-
-  for tag, item_list in tag_to_items.items():
-    if tag == "all":
-      rss_link = "/news.rss"
-    else:
-      rss_link = "/news/%s.rss" % tag
-    rss_link_tag = '<link rel=alternate type="application/rss+xml" title="RSS Feed" href="%s">' % rss_link
-
-    t = open(os.path.join(NEW_OUT_DIR, "%s.html" % tag), "w").write
-    t("<html>\n")
-    if tag == "all":
-      page_title = "Blog Posts"
-    else:
-      page_title = "Posts tagged %s" % tag
-
-    t("  <head><title>%s</title>%s%s%s</head>\n" % (
-      page_title, meta_viewport(),
-      rss_link_tag, GA))
-    t('<style>'
-      '.headfoot { margin: 3px }'
-      'h2 { margin: .5em }'
-      'body { margin: 0; padding: 0}'
-      'li { list-style-type: none; margin: 0 }'
-      'li a { display: block; padding: .75em }'
-      'li a:link { text-decoration: none }'
-      '.title:hover { text-decoration: underline }'
-      'ul { margin: 0; padding: 0 }'
-      'li:nth-child(odd) {'
-      '  background: #EEE;'
-      '  background: linear-gradient(to right, #EEE 400px, #FFF 600px);'
-      '}'
-      '.date { font-size: 85% ; color: black }'
-      '</style>')
-
-    t('  <body>%s<hr><h2>Posts :: %s (<a href="%s">rss</a>)</h2>\n' % (
-      links_partial(), tag, rss_link))
-    t('  <ul>')
-    for year, month, day, link, title in item_list:
-      t('   <li><a href="%s">'
-        '       <div class=title>%s</div>'
-        '       <div class=date>%s %s, %s</div></a></li>\n' % (
-        link, title, month, day, year))
-    t('  </ul>\n')
-    t('  <hr>%s\n' % links_partial())
-    t('  </body>\n')
-    t('</html>\n')
-
-  write_footer(w_full)
-  write_footer(w_partial)
+    with open(config.full_filename(os.path.join(
+        config.new(config.out), '%s.html' % tag)), 'w') as outf:
+      outf.write('''\
+<html>
+<head>
+  <title>%s</title>
+  <meta name=viewport content="%s">
+  <link rel=alternate type="application/rss+xml" title="RSS Feed" href="%s">'
+  %s
+</head>
+<body>
+<style>
+.headfoot { margin: 3px }
+h2 { margin: .5em }
+body { margin: 0; padding: 0}
+li { list-style-type: none; margin: 0 }
+li a { display: block; padding: .75em }
+li a:link { text-decoration: none }
+.title:hover { text-decoration: underline }
+ul { margin: 0; padding: 0 }
+li:nth-child(odd) {
+  background: #EEE;
+  background: linear-gradient(to right, #EEE 400px, #FFF 600px);
+}
+.date { font-size: 85%% ; color: black }
+</style>
+%s<hr><h2>Posts :: %s (<a href="%s">rss</a>)</h2>\n'
+<ul>
+%s
+</ul>
+<hr>%s
+</body>
+</html>''' % (
+  'Blog Posts' if tag == 'all' else 'Posts tagged %s' % tag,
+  SNIPPETS['meta_viewport'],
+  rss_link,
+  SNIPPETS['google_analytics'],
+  links_partial(),
+  tag,
+  rss_link,
+  entries,
+  links_partial()))
 
   edit_front_page(front_page_list)
 
-  os.rename(P_DIR, PREV_P_DIR)
-  os.rename(NEW_P_DIR, P_DIR)
+  for x in [
+      config.posts, config.out, config.rss, config.rss_full]:
+    x = config.full_filename(x)
 
-  os.rename(OUT_DIR, PREV_OUT_DIR)
-  os.rename(NEW_OUT_DIR, OUT_DIR)
+    os.rename(x, config.prev(x))
+    os.rename(config.new(x), x)
 
-  os.symlink("%s/all.html" % OUT_DIR, "%s/index.html" % OUT_DIR)
-  os.symlink("%s/all.html" % OUT_DIR, "%s/index.html" % P_DIR)
+  #os.symlink("%s/all.html" % OUT_DIR, "%s/index.html" % OUT_DIR)
+  #os.symlink("%s/all.html" % OUT_DIR, "%s/index.html" % P_DIR)
 
 def tidy_day(day):
   d = str(int(day))
-  suffix = "th"
+  suffix = 'th'
   if len(d) == 2 and d[0] == '1':
-    suffix = "th"
+    suffix = 'th'
   elif d[-1] == '1':
-    suffix = "st"
+    suffix = 'st'
   elif d[-1] == '2':
-    suffix = "nd"
+    suffix = 'nd'
   elif d[-1] == '3':
-    suffix = "rd"
+    suffix = 'rd'
   return d + suffix
 
-if __name__ == "__main__":
+if __name__ == '__main__':
   start()
