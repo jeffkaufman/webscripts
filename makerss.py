@@ -883,12 +883,6 @@ class Post:
         SNIPPETS['css'],
         '\n'.join(sorted(amp_styles)))))
 
-    if is_amp:
-      for custom_element, custom_element_url in amp_custom_elements:
-        ce_script = etree.Element('script', async='', src=custom_element_url)
-        ce_script.set('custom-element', custom_element)
-        head.append(ce_script)
-
     wrapper = etree.Element('div', id='wrapper')
 
     wrapper.append(parse(links_partial()))
@@ -916,9 +910,46 @@ class Post:
     if self.services:
       content.append(parse('<p>Comment via: %s</p>\n' % (
         ', '.join('<a href="%s">%s</a>' % (service_link, service_name)
-                  for service_name, service_abbr, service_link, service_tag
-                  in self.services))))
-      if not is_amp:
+                  for service_name, _, service_link, _ in self.services))))
+      if is_amp:
+        comment_thread = etree.Element('div')
+        comment_thread.set('class', 'comment-thread')
+        comments = etree.Element('div', id='comments')
+        comments.append(comment_thread)
+        content.append(comments)
+
+        amp_custom_elements.add((
+          'amp-list', 'https://cdn.ampproject.org/v0/amp-list-0.1.js'))
+        amp_custom_elements.add((
+          'amp-mustache', 'https://cdn.ampproject.org/v0/amp-mustache-0.1.js'))
+        amp_list = etree.Element(
+          'amp-list', width='auto', height="500",
+          layout='fixed-height',
+          src='/wsgi/amp-json-comments?%s' % (
+            '&'.join('%s=%s' % (service_abbr, service_token)
+                     for _, service_abbr, _, service_token in self.services)))
+        template = etree.Element('template', type='amp-mustache')
+        comment = etree.Element('div', id='{{anchor}}')
+        comment.set('class', 'comment')
+        source_a = etree.Element('a', href='{{source_link}}')
+        source_a.text='{{{author}}}'
+        comment.append(source_a)
+        service_span = etree.Element('span')
+        service_span.text = ' ({{service}})'
+        comment.append(service_span)
+        comment_link = etree.Element('a', href='#{{anchor}}')
+        comment_link.set('class', 'commentlink')
+        comment.append(comment_link)
+        comment_text_p = etree.Element('p')
+        comment_text_p.text = '{{{text}}}'
+        comment.append(comment_text_p)
+        template.append(comment)
+        amp_list.append(template)
+        overflow = etree.Element('div', overflow='')
+        overflow.text = 'See more'
+        amp_list.append(overflow)
+        comment_thread.append(amp_list)
+      else:
         content.append(parse('''\
 <div id="comments">
 %s
@@ -962,6 +993,12 @@ class Post:
       page.set('amp', 'amp')
     page.append(head)
     page.append(body)
+
+    if is_amp:
+      for custom_element, custom_element_url in amp_custom_elements:
+        ce_script = etree.Element('script', async='', src=custom_element_url)
+        ce_script.set('custom-element', custom_element)
+        head.append(ce_script)
 
     return '<!doctype html>\n%s' % etree.tostring(
       page, method='html', pretty_print=True).decode('utf-8').replace(config.break_token, '')

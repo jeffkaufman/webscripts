@@ -545,15 +545,24 @@ def flatten(json_comments, parent_key=None):
             raise Exception('invalid comment %r' % comment)
     return flattened
 
+def clean_text(s):
+    s = re.sub('^(<[^>]*>)*', '', s, re.MULTILINE)
+    s = s.replace('<p>', '{p}')
+    s = re.sub('<[^>]*>', '', s)
+    s = s.replace('{p}', '<br><br>')
+    return s
+
 def amp_comments(json_comments):
     return [(key,
              {'author': author,
               'source_link': source_link,
               'anchor': anchor,
-              'text': '%s%s' % ('&rarr;' * key.count(' '), text),
+              'service': anchor.split('-')[0],
+              'text': '%s%s' % ('&rarr;&nbsp;' * key.count(' '),
+                                clean_text(text)),
               'timestamp': timestamp})
-        for key, (author, source_link, anchor, text, timestamp) in flatten(
-                json_comments)]
+            for key, (author, source_link, anchor, text, timestamp) in flatten(
+                    json_comments)]
 
 SERVICE_FNS = {
     'gp': service_gp,
@@ -588,11 +597,20 @@ def start(environ, start_response):
         unsorted_comments = []
         for component in query_string.split('&'):
             service_abbr, service_token = component.split('=')
+            if service_abbr not in SERVICE_FNS:
+                continue
             unsorted_comments.extend(amp_comments(cacher(
                 cache_only=False, fn=SERVICE_FNS[service_abbr],
                 service=service_abbr, arg=service_token)))
-        return json.dumps({'items': [
-            comment for _, comment in sorted(unsorted_comments)]})
+
+        start_response('200 OK', [
+            ('content-type', 'text/javascript'),
+            ('Access-Control-Allow-Origin', '*'),
+            ('AMP-Access-Control-Allow-Source-Origin',
+             'https://www.jefftk.com'),
+            ('Access-Control-Expose-Headers', '*')])
+        return ['already started', json.dumps({'items': [
+            comment for _, comment in sorted(unsorted_comments)]})]
 
     return "not supported %r" % path
 
