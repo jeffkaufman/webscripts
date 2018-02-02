@@ -776,8 +776,18 @@ class Post:
           attrib['layout'] = 'responsive'
           attrib['data-videoid'] = videoid
         else:
-          #iframe.tag = 'amp-iframe'
-          pass
+         amp_custom_elements.add(
+           ('amp-iframe', 'https://cdn.ampproject.org/v0/amp-iframe-0.1.js'))
+         iframe.tag = 'amp-iframe'
+
+         try:
+           placeholder_img = iframe.attrib.pop('data-placeholder')
+           iframe.append(etree.Element(
+             'amp-img', placeholder='', layout='fill', src=placeholder_img))
+         except KeyError:
+           pass
+
+         iframe.set('sandbox', 'allow-scripts allow-same-origin')
 
     no_tags_no_ws = re.sub('<[^>]*>', '',
                            re.sub('\s+',' ',
