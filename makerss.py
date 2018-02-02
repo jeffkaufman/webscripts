@@ -1219,7 +1219,7 @@ def start():
 <head>
   <title>%s</title>
   <meta name=viewport content="%s">
-  <link rel=alternate type="application/rss+xml" title="RSS Feed" href="%s">'
+  <link rel=alternate type="application/rss+xml" title="RSS Feed" href="%s">
   %s
 </head>
 <body>
@@ -1238,7 +1238,7 @@ li:nth-child(odd) {
 }
 .date { font-size: 85%% ; color: black }
 </style>
-%s<hr><h2>Posts :: %s (<a href="%s">rss</a>)</h2>\n'
+%s<hr><h2>Posts :: %s (<a href="%s">rss</a>)</h2>
 <ul>
 %s
 </ul>
