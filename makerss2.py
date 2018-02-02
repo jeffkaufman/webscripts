@@ -498,7 +498,7 @@ def edit_front_page(front_page_list):
       for line in inf:
         if '<!-- end recent thoughts -->' in line:
           for entry in front_page_list:
-            outf.write('\n'.join(entry))
+            outf.write(entry)
             outf.write('\n')
           skipping = False
 
@@ -542,7 +542,6 @@ class Update:
   def __init__(self, slug, post, element):
     self.anchor = 'update-%s' % slug
     self.slug = slug
-    self.link = post.link() + '#%s' % self.anchor
     self.year, self.numeric_month, self.day = slug.split('-')
     self.short_month = {'01': 'Jan',
                         '02': 'Feb',
@@ -560,6 +559,9 @@ class Update:
     self.element = element
     self.title = 'Update %s' % slug
 
+  def link(self):
+    return self.post.link() + '#%s' % self.anchor
+
   def rss(self):
     html = etree.tostring(
       self.element, method='html', pretty_print=True).decode('utf-8')
@@ -576,9 +578,9 @@ class Update:
   <pubDate>%s %s %s 08:00:00 EST</pubDate>
   <description>%s</description>
 </item>''' % (
-  config.relative_url(self.link),
+  config.relative_url(self.link()),
   self.title,
-  config.full_url(self.link),
+  config.full_url(self.link()),
   self.day, self.short_month, self.year,
   quote(html))
 
@@ -592,7 +594,7 @@ class Post:
     self.name = title_to_url_component(title)
     self.element = element
     self.updates = {}
-    
+
     # these are filled in externally for published posts
     self.older_post = None
     self.newer_post = None
@@ -697,27 +699,38 @@ class Post:
   def blog_entry_summary(self):
     element = deepcopy(self.element)
     removing = False
-    for child in element.find('.//*'):
+    for child in element.findall('.//*'):
       if child.text and config.break_token in child.text:
         child.text, _ = child.text.split(config.break_token)
+        child.text += '%s'
+        removing = True
+        child.tail = ''
+      elif child.tail and config.break_token in child.tail:
+        child.tail, _ = child.tail.split(config.break_token)
+        child.tail += '%s'
         removing = True
       elif removing:
         child.getparent().remove(child)
 
-    link = config.relative_url(self.link)
+    link = config.relative_url(self.link())
+    append_more = "%s<a href='%s'>%s...</a>" % (
+      ' ' if removing else '<p>', link, 'more' if removing else 'full post')
+    html = self.stringify_(element)
+    if removing:
+      html = html % append_more
+    else:
+      html = html + append_more
+
     return '''\
 <div class=blog-entry-summary>
   <div class=blog-entry-date><a
      class=invisible-link href='%s'>%s %s, %s</a></div>
   <div class=blog-entry-title><a class=invisible-link href='%s'>%s</a></div>
   <div class=blog-entry-beginning>
-    <p>%s%s<a href='%s'>%s...</a>
+    <p>%s
   </div>
 </div>''' % (link, self.month, tidy_day(self.day), self.year,
-             link, self.title, self.stringify_(element),
-             ' ' if removing else '<p>',
-             link,
-             'more' if removing else 'full post')
+             link, self.title, html)
 
   def html(self, is_amp):
     element = deepcopy(self.element)
@@ -882,7 +895,7 @@ class Post:
                                       comments_links))
 
     html = self.stringify_(element)
-      
+
     return '''
 <item>
   <guid>%s</guid>
@@ -902,7 +915,7 @@ class Post:
 
 def parse(s):
   return lxml.html.fragment_fromstring(s, create_parent=False)
-  
+
 def parsePosts():
   posts = []
   published_posts = []
@@ -938,14 +951,15 @@ def parsePosts():
         assert tags_raw.startswith('Tags:')
         tags = [x.strip() for x in tags_raw[len('Tags:'):].split(',')]
 
-        if tags_h4.tail:
-          first_p = etree.Element('p')
-          first_p.text = tags_h4.tail
-          element.insert(0, first_p)
-          
         # Remove the title and tags now that we're done with them.
         element.remove(title_h3)
         element.remove(tags_h4)
+
+        if tags_h4.tail:
+          # don't lose this text
+          first = etree.Element('span')
+          first.text = tags_h4.tail
+          element.insert(0, first)
 
         post = Post(slug, date, title, tags, element)
         posts.append(post)
@@ -1121,7 +1135,7 @@ li:nth-child(odd) {
   for x in [
       config.posts, config.out, config.rss, config.rss_full]:
     x = config.full_filename(x)
-    
+
     os.rename(x, config.prev(x))
     os.rename(config.new(x), x)
 
