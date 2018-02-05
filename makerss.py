@@ -36,7 +36,7 @@ For experimenting with AMP I have the following in my nginx config:
 
   http {
     ...
-    split_clients "amp${remote_addr}${http_user_agent}${date_gmt}" $amp {
+    split_clients "amp${remote_addr}${http_user_agent}${msec}" $amp {
       50% ".amp";
       * "";
     }
