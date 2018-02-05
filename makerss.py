@@ -933,9 +933,11 @@ class Post:
 
     tag_block = ''
     if self.tags:
-      tag_block = '<span>%s</span>' % ', '.join(
-        '<i><a href="/news/%s">%s</a></i>' % (tag, tag)
-        for tag in self.tags)
+      tag_block = '<span>%s</span>&nbsp;&nbsp;<small><tt>%s</tt></small>' % (
+        ', '.join(
+          '<i><a href="/news/%s">%s</a></i>' % (tag, tag)
+          for tag in self.tags),
+        '[amp]' if is_amp else '[html]')
 
     content.append(parse('''<table id="title-date-tags">
     <tr><td valign="top" rowspan="2"><h3><a href="%s">%s</a></h3></td>
