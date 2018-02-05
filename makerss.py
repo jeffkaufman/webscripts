@@ -820,7 +820,7 @@ class Post:
       element.insert(0, parse('<p><i>draft post</i></p>'))
 
     amp_styles = set()
-    amp_custom_elements = set()
+    amp_external = set()
 
     if is_amp:
       for styled in element.findall('.//*[@style]'):
@@ -845,8 +845,7 @@ class Post:
 
       for iframe in element.findall('.//iframe'):
         if 'youtube' in iframe.get('src'):
-          amp_custom_elements.add(
-            ('amp-youtube', 'https://cdn.ampproject.org/v0/amp-youtube-0.1.js'))
+          amp_external.add('youtube')
           iframe.tag = 'amp-youtube'
           videoid, = re.findall('/embed/([^?]*)', iframe.get('src'))
           attrib = iframe.attrib
@@ -856,8 +855,7 @@ class Post:
           attrib['layout'] = 'responsive'
           attrib['data-videoid'] = videoid
         else:
-         amp_custom_elements.add(
-           ('amp-iframe', 'https://cdn.ampproject.org/v0/amp-iframe-0.1.js'))
+         amp_external.add('youtube')
          iframe.tag = 'amp-iframe'
 
          try:
@@ -901,8 +899,7 @@ class Post:
     body = etree.Element('body')
 
     if is_amp:
-      amp_custom_elements.add(
-        ('amp-analytics', 'https://cdn.ampproject.org/v0/amp-analytics-0.1.js'))
+      amp_external.add('analytics')
       body.append(parse(SNIPPETS['google_analytics_amp']))
     else:
       head.append(parse(SNIPPETS['google_analytics_nonamp']))
@@ -958,10 +955,8 @@ class Post:
         comments.append(comment_thread)
         content.append(comments)
 
-        amp_custom_elements.add((
-          'amp-list', 'https://cdn.ampproject.org/v0/amp-list-0.1.js'))
-        amp_custom_elements.add((
-          'amp-mustache', 'https://cdn.ampproject.org/v0/amp-mustache-0.1.js'))
+        amp_external.add('list')
+        amp_external.add('mustache')
 
         comment_thread.append(parse('''
 <amp-list width=auto height=500 layout="fixed-height" src=%s>
@@ -1024,9 +1019,13 @@ class Post:
     page.append(body)
 
     if is_amp:
-      for custom_element, custom_element_url in amp_custom_elements:
-        ce_script = etree.Element('script', async='', src=custom_element_url)
-        ce_script.set('custom-element', custom_element)
+      for external in amp_external:
+        external_type = 'template' if external == 'mustache' else 'element'
+        ce_script = etree.Element(
+          'script', async='',
+          src='https://cdn.ampproject.org/v0/amp-%s-0.1.js' % external)
+        ce_script.set('custom-%s' % external_type, 'amp-%s' % external)
+        ce_script.tail = '\n'
         head.append(ce_script)
 
     return '<!doctype html>\n%s' % etree.tostring(
