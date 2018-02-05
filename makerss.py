@@ -560,6 +560,7 @@ function pullComments(wsgiUrl, serviceName) {
                max-width: 200px;}}
 #title-date-tags { width: 100% }
 #wrapper { margin: 8px}
+body {margin: 0}
 #title-date-tags h3 { margin: 0 }''',
 
   'amp_boilerplate': '<style amp-boilerplate="">body{-webkit-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-moz-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-ms-animation:-amp-start 8s steps(1,end) 0s 1 normal both;animation:-amp-start 8s steps(1,end) 0s 1 normal both}@-webkit-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-moz-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-ms-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-o-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}</style>',
@@ -964,7 +965,7 @@ class Post:
 <amp-list width=auto height=500 layout="fixed-height" src=%s>
   <template type="amp-mustache">
     <div class=comment id="{{anchor}}">
-      <a dontescapethis="{{source_link}}">{{author}}</a> ({{service}})
+      <a dontescapethis="{{source_link}}">{{{author}}}</a> ({{service}})
       <a dontescapethis="#{{anchor}}" class=commentlink></a>
       <p>{{{text}}}
     </div>
