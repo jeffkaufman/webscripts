@@ -89,6 +89,8 @@ class Configuration:
     return os.path.join(self.site_url, leaf)
 
   def full_filename(self, leaf):
+    if leaf.startswith('/'):
+      leaf = leaf[1:]
     return os.path.join(self.site_dir, leaf)
 
   def post_url(self, post):
