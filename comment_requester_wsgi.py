@@ -241,7 +241,7 @@ def service_fb(objid):
         return sanitize_name(raw_name(comment))
 
     def message(comment):
-        return escape(comment["message"]).replace("\n\n", "\n<p>")
+        return escape(comment["message"]).replace("\n", "\n<br>")
 
     def comment_id(comment):
         return anchor(comment).split("_")[-1]
@@ -547,9 +547,10 @@ def flatten(json_comments, parent_key=None):
 
 def clean_text(s):
     s = re.sub('^(<[^>]*>)*', '', s, re.MULTILINE)
-    s = s.replace('<p>', '{p}')
+    s = s.replace('<p>', '<br><br>')
+    s = s.replace('<br>', '{br}')
     s = re.sub('<[^>]*>', '', s)
-    s = s.replace('{p}', '<br><br>')
+    s = s.replace('{br}', '<br>')
     return s
 
 def amp_comments(json_comments):
