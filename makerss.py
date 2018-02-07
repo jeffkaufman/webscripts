@@ -785,12 +785,10 @@ class Post:
     for child in element.findall('.//*'):
       if child.text and config.break_token in child.text:
         child.text, _ = child.text.split(config.break_token)
-        child.text += '%s'
         removing = True
         child.tail = ''
       elif child.tail and config.break_token in child.tail:
         child.tail, _ = child.tail.split(config.break_token)
-        child.tail += '%s'
         removing = True
       elif removing:
         child.getparent().remove(child)
@@ -798,11 +796,7 @@ class Post:
     link = config.relative_url(self.link())
     append_more = "%s<a href='%s'>%s...</a>" % (
       ' ' if removing else '<p>', link, 'more' if removing else 'full post')
-    html = self.stringify_(element)
-    if removing:
-      html = html % append_more
-    else:
-      html = html + append_more
+    html = self.stringify_(element) + append_more
 
     return '''\
 <div class=blog-entry-summary>
