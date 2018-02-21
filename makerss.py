@@ -111,6 +111,12 @@ class Configuration:
 config = Configuration()
 
 BEST_POSTS = [
+  ('2017-09-15', 'Superintelligence Risk Project: Conclusion'),
+  ('2016-12-26', 'Mandolin Teaching Videos'),
+  ('2016-10-24', 'Details Behind the InIn Document'),
+  ('2016-10-02', 'Responsible Transparency Consumption'),
+  ('2016-08-08', 'Earning to Give Talk'),
+  ('2016-07-17', 'Scientific Charity Movement'),
   ('2016-06-20', 'Mike Mulligan and His Obsolete Technology'),
   ('2016-06-15', 'Reading about guns'),
   ('2016-02-26', 'Make Buses Dangerous'),
@@ -884,9 +890,9 @@ class Post:
     if is_amp:
       head.append(etree.Element('link', rel='canonical',
                                 href=config.relative_url(self.link())))
-    #else:
-    #  head.append(etree.Element('link', rel='amphtml-draft', href='%s.amp' % (
-    #    config.relative_url(self.link()))))
+    else:
+      head.append(etree.Element('link', rel='amphtml', href='%s.amp' % (
+        config.relative_url(self.link()))))
 
     title = etree.Element('title')
     title.text = self.title
