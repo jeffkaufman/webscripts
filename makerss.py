@@ -1077,7 +1077,18 @@ def parsePosts():
   posts_by_name = {}
   posts_by_slug = {}
 
-  with open(config.full_filename(config.in_html)) as inf:
+  raw_fname = config.full_filename(config.in_html)
+  cleaned_fname = raw_fname + '.tmp'
+  with open(raw_fname) as inf:
+    with open(cleaned_fname, 'w') as outf:
+      raw_text = inf.read()
+      for f, r in [('“', '"'),
+                   ('”', '"'),
+                   ("’", "'")]:
+        raw_text = raw_text.replace(f, r)
+      outf.write(raw_text)
+  
+  with open(cleaned_fname) as inf:
     tree = etree.parse(inf, etree.HTMLParser())
     body = tree.find('body')
 
