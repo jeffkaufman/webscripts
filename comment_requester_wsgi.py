@@ -588,9 +588,15 @@ def start(environ, start_response):
             return json.dumps(service_fn(token))
 
         cache_only = {"json-comments": False,
+                      "json-comments-validator": False,
                       "json-comments-cached": True}[path_initial]
 
         if service_fn:
+            response = cacher(cache_only, service_fn, service, token)
+            if path_initial == 'json-comments-validator':
+                status = '200 OK' if response else '404 Not Found'
+                start_response(status, [('content-type', 'text/plain')])
+                return ['already started', 'comments: %s' % len(response)]
             return json.dumps(cacher(cache_only, service_fn, service, token))
 
     elif path == "/amp-json-comments":
@@ -613,7 +619,8 @@ def start(environ, start_response):
         return ['already started', json.dumps({'items': [
             comment for _, comment in sorted(unsorted_comments)]})]
 
-    return "not supported %r" % path
+    start_response('404 Not Found', [('content-type', 'text/plain')])
+    return ['already started', 'not supported %r' % path]
 
 def application(environ, start_response):
     raw = False
@@ -683,6 +690,7 @@ def recalculate_fb_token():
     print "  FB_CODE='%s'" % long_lived_token
 
     print "Then restart uwsgi: sudo service uwsgi-comments restart"
+
 
 if __name__ == "__main__":
     {"server": server,
