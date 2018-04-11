@@ -198,85 +198,56 @@ def sanitize_name(name):
     name = name.split()[0]
     return name
 
-def service_fb(objid):
-    if not objid.startswith("4102153_"):
-        objid = "4102153_" + objid
 
-    def collect_comments(url):
-        response = json.loads(slurp(url))
-        if "data" not in response or not response["data"]:
-            return []
-        data = response["data"]
-        if "paging" in response and "next" in response["paging"]:
-            data.extend(collect_comments(response["paging"]["next"]))
-        return data
+def service_fb(objid, commentid=None):
+    if objid.startswith("4102153_"):
+        objid = objid.replace("4102153_", "")
 
-    # debug with https://www.jefftk.com/p/conversation-with-gleb-of-intentional-insights#fb-805642967912_805768436472
-    def resolve_replies(comments):
-        for comment in comments:
-            if "comments" in comment:
-                response = comment["comments"]
-                if "paging" in response and "next" in response["paging"]:
-                    response["data"].extend(collect_comments(response["paging"]["next"]))
+    if commentid:
+        url = "https://www.facebook.com/ajax/ufi/reply_fetch.php?dpr=1"
+        data = 'ft_ent_identifier=' + objid + '&parent_comment_ids[0]=' + commentid + '&source&offsets[0]=0&lengths[0]=50&feed_context=%7B%22is_viewer_page_admin%22%3Afalse%2C%22is_notification_preview%22%3Afalse%2C%22autoplay_with_channelview_or_snowlift%22%3Afalse%2C%22video_player_origin%22%3A%22permalink%22%2C%22fbfeed_context%22%3Atrue%2C%22location_type%22%3A5%2C%22outer_object_element_id%22%3A%22u_0_e%22%2C%22object_element_id%22%3A%22u_0_e%22%2C%22is_ad_preview%22%3Afalse%2C%22is_editable%22%3Afalse%2C%22mall_how_many_post_comments%22%3A2%2C%22bump_reason%22%3A0%2C%22story_width%22%3A502%2C%22tn-str%22%3A%22-R%22%7D&numpagerclicks&containerorderingmode=toplevel&av=&__user=0&__a=1&__dyn=5V8WXBzamaUmgDBzFHpUR1ycCzSczVbGAdyeGBXrWqF1eU8EnmdwFF6xCahUKFGV8kGdBCyEnCG22aUKEjACkwy48G5WAAzppenKtqx2AcUKmcAAxaFS58-EpUyidzoKnGh4-9AZ4oK48nyp8Fecx2egO8hqwVx29J4xeumuibBDxa366e59HCypHh46EO4EiVbiKaCUkV-8UoGTx67kh3ouzHyoSaCwBzAq4rG-Gx1p8CcnykGmV7GiumpiaA8DDtwxk-32ibK2hyVtKqdyUaopx3yUymiaVEGCXXghx69jGeyV8V7LhpUHAUGuq9xlai9CBAJ1e7ESmiaVpoPhbx6uehFUOaBG9DADCy8OESbx2eGFU&__req=4&__be=-1&__pc=PHASED%3ADEFAULT&__rev=3803187&lsd=AVoslYXd'
+    else:
+        url = "https://www.facebook.com/ajax/ufi/comment_fetch.php?dpr=1"
+        data = "ft_ent_identifier=" + objid + "&viewas&source=2&offset=0&length=50&orderingmode=toplevel&section=default&feed_context=%7B%22is_viewer_page_admin%22%3Afalse%2C%22is_notification_preview%22%3Afalse%2C%22autoplay_with_channelview_or_snowlift%22%3Afalse%2C%22video_player_origin%22%3A%22permalink%22%2C%22fbfeed_context%22%3Atrue%2C%22location_type%22%3A5%2C%22outer_object_element_id%22%3A%22u_0_e%22%2C%22object_element_id%22%3A%22u_0_e%22%2C%22is_ad_preview%22%3Afalse%2C%22is_editable%22%3Afalse%2C%22mall_how_many_post_comments%22%3A2%2C%22bump_reason%22%3A0%2C%22story_width%22%3A502%2C%22tn-str%22%3A%22-R%22%7D&numpagerclicks&av=&__user=0&__a=1&__dyn=5V8WXBzamaUmgDBzFHpUR1ycCzSczVbGAdyeGBXrWqF1eU8EnmdwFF6xCahUKFGV8kGdBCyEnCG22aUKEjACkwy48G5WAAzppenKtqx2AcUKmcAAxaFS58-EpUyidzoKnGh4-9AZ4oK48nyp8Fecx2egO8hqwVx29J4xeumuibBDxa366e59HCypHh46EO4EiVbiKaCUkV-8UoGTx67kh3ouzHyoSaCwBzAq4rG-Gx1p8CcnykGmV7GiumpiaA8DDtwxk-32ibK2hyVtKqdyUaopx3yUymiaVEGCXXghx69jGeyV8V7LhpUHAUGuq9xlai9CBAJ1e7ESmiaVpoPhbx6uehFUOaBG9DADCy8OESbx2eGFU&__req=2&__be=-1&__pc=PHASED%3ADEFAULT&__rev=3803187&lsd=AVoslYXd"
 
-    # could do up to &limit=80 here, but following next= links is better
-    fullurl = "%s/%s/comments?access_token=%s&fields=created_time,from,message,id,comments" % (
-        "https://graph.facebook.com/v2.8", objid, FB_CODE)
-    comments = collect_comments(fullurl)
-    resolve_replies(comments)
+    response_body = slurp(
+        url, headers={'Cookie': 'datr=A1DOWofb9lsyZC9IH-VQDMzn'}, data=data)
+    #print(response_body)
+    response_parsed = json.loads(response_body.replace("for (;;);", ""))
+    #if commentid:
+    #    import code
+    #    code.interact(local=locals())
+    c = response_parsed['jsmods']['require'][0][3][1]
 
-    def anchor(comment):
-        return escape(comment["id"])
+    output_comments = []
 
-    def user_id(comment):
-        return escape(comment["from"]["id"])
+    for comment in c['comments']:
+        comment_id = comment["id"]
+        uid = comment['author']
+        if uid in FB_SHOW_BLACKLIST:
+            continue
+        message = escape(comment['body']['text'])
 
-    def skip(comment):
-        return str(user_id(comment)) in FB_SHOW_BLACKLIST
+        ts = int(comment['timestamp']['time'])
 
-    def raw_name(comment):
-        return comment["from"]["name"]
+        profile = c['profiles'][uid]
+        name = escape(INITIALS.get(profile['name'], profile['firstName']))
 
-    def name(comment):
-        return sanitize_name(raw_name(comment))
+        anchor = 'fb-%s' % (escape(comment_id))
 
-    def message(comment):
-        return escape(comment["message"]).replace("\n", "\n<br>")
+        user_link = "https://www.facebook.com/%s/posts/%s?comment_id=%s" % (
+            FB_POSTER_ID, objid, comment_id.split("_")[-1])
+        if uid in FB_LINK_BLACKLIST:
+            user_link = '#'
 
-    def comment_id(comment):
-        return anchor(comment).split("_")[-1]
+        replies = []
+        if 'replyauthors' in comment:
+            replies = service_fb(objid, comment_id)
 
-    def user_link(comment):
-        if str(user_id(comment)) in FB_LINK_BLACKLIST:
-            return '#'
-        return "https://www.facebook.com/%s/posts/%s?comment_id=%s" % (
-            FB_POSTER_ID, objid.split("_")[-1], comment_id(comment))
-        # return "https://www.facebook.com/profile.php?id=%s" % user_id(comment)
+        output_comments.append([
+            name, user_link, anchor, message, ts, replies])
 
-    def ts(comment):
-        return epoch(comment['created_time'])
-
-    out = []
-    raw_names = {}
-
-    def to_list(comment):
-        raw_names[raw_name(comment)] = name(comment)
-        return [name(comment),
-                user_link(comment),
-                "fb-%s" % anchor(comment),
-                message(comment),
-                ts(comment),
-                []] # replies
-
-    for comment in comments:
-        if not skip(comment):
-            l = to_list(comment)
-            if "comments" in comment:
-                for reply in comment["comments"]["data"]:
-                    if not skip(reply):
-                        l[-1].append(to_list(reply))
-            out.append(l)
-    return sanitize_names_extended(out, raw_names)
+    return output_comments
 
 def parse_reddit_style_json_comment(raw_comment, url):
     raw_comment = raw_comment["data"]
@@ -655,7 +626,7 @@ def server():
     make_server('',8010,application).serve_forever()
 
 def recalculate_fb_token():
-    redirect_url = "http://www.jefftk.com/"
+    redirect_url = "https://www.jefftk.com/"
 
     print "We need to regenerate a long-lived access token for facebook"
     print "Load the following URL in your browser:"
