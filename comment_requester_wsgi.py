@@ -199,7 +199,12 @@ def sanitize_name(name):
     return name
 
 
-def service_fb(objid, commentid=None):
+def service_fb(objid):
+    raw_names = {}
+    fb_comments = fb_comment_fetcher(objid, raw_names)
+    return sanitize_names_extended(fb_comments, raw_names)
+
+def fb_comment_fetcher(objid, raw_names, commentid=None):
     if objid.startswith("4102153_"):
         objid = objid.replace("4102153_", "")
 
@@ -231,7 +236,11 @@ def service_fb(objid, commentid=None):
         ts = int(comment['timestamp']['time'])
 
         profile = c['profiles'][uid]
-        name = escape(INITIALS.get(profile['name'], profile['firstName']))
+
+        fullname = profile['name']
+        firstname = profile['firstName']
+        raw_names[fullname] = firstname
+        name = INITIALS.get(fullname, escape(firstname))
 
         anchor = 'fb-%s' % (escape(comment_id))
 
@@ -242,7 +251,7 @@ def service_fb(objid, commentid=None):
 
         replies = []
         if 'replyauthors' in comment:
-            replies = service_fb(objid, comment_id)
+            replies = fb_comment_fetcher(objid, raw_names, comment_id)
 
         output_comments.append([
             name, user_link, anchor, message, ts, replies])
