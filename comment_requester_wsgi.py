@@ -205,23 +205,32 @@ def service_fb(objid):
     return sanitize_names_extended(fb_comments, raw_names)
 
 def fb_comment_fetcher(objid, raw_names, commentid=None):
+    with open('/home/jefftk/webscripts/fb_lsd.txt') as inf:
+        lsd = inf.read().strip()
+
+    with open('/home/jefftk/webscripts/fb_dyn_fetch.txt') as inf:
+        request_json = json.loads(inf.read())
+        suffix = '&__user=' + request_json['url'].split('&__user=')[-1] + "&lsd=" + lsd
+
+    with open('/home/jefftk/webscripts/fb_%s_fetch.txt' % (
+            'reply' if commentid else 'comment')) as inf:
+        request_json = json.loads(inf.read())
+        url = request_json['full_url']
+        for request_header in request_json['headers']['request']:
+            if request_header.startswith("cookie: "):
+                _, cookie = request_header.split(' ', 1)
+
     if objid.startswith("4102153_"):
         objid = objid.replace("4102153_", "")
 
     if commentid:
-        url = "https://www.facebook.com/ajax/ufi/reply_fetch.php?dpr=1"
-        data = 'ft_ent_identifier=' + objid + '&parent_comment_ids[0]=' + commentid + '&source&offsets[0]=0&lengths[0]=50&feed_context=%7B%22is_viewer_page_admin%22%3Afalse%2C%22is_notification_preview%22%3Afalse%2C%22autoplay_with_channelview_or_snowlift%22%3Afalse%2C%22video_player_origin%22%3A%22permalink%22%2C%22fbfeed_context%22%3Atrue%2C%22location_type%22%3A5%2C%22outer_object_element_id%22%3A%22u_0_e%22%2C%22object_element_id%22%3A%22u_0_e%22%2C%22is_ad_preview%22%3Afalse%2C%22is_editable%22%3Afalse%2C%22mall_how_many_post_comments%22%3A2%2C%22bump_reason%22%3A0%2C%22story_width%22%3A502%2C%22tn-str%22%3A%22-R%22%7D&numpagerclicks&containerorderingmode=toplevel&av=&__user=0&__a=1&__dyn=5V8WXBzamaUmgDBzFHpUR1ycCzSczVbGAdyeGBXrWqF1eU8EnmdwFF6xCahUKFGV8kGdBCyEnCG22aUKEjACkwy48G5WAAzppenKtqx2AcUKmcAAxaFS58-EpUyidzoKnGh4-9AZ4oK48nyp8Fecx2egO8hqwVx29J4xeumuibBDxa366e59HCypHh46EO4EiVbiKaCUkV-8UoGTx67kh3ouzHyoSaCwBzAq4rG-Gx1p8CcnykGmV7GiumpiaA8DDtwxk-32ibK2hyVtKqdyUaopx3yUymiaVEGCXXghx69jGeyV8V7LhpUHAUGuq9xlai9CBAJ1e7ESmiaVpoPhbx6uehFUOaBG9DADCy8OESbx2eGFU&__req=4&__be=-1&__pc=PHASED%3ADEFAULT&__rev=3803187&lsd=AVoslYXd'
+        data = 'ft_ent_identifier=' + objid + '&parent_comment_ids[0]=' + commentid + '&source&offsets[0]=0&lengths[0]=50&feed_context=%7B%22is_viewer_page_admin%22%3Afalse%2C%22is_notification_preview%22%3Afalse}%2C%22autoplay_with_channelview_or_snowlift%22%3Afalse%2C%22video_player_origin%22%3A%22permalink%22%2C%22fbfeed_context%22%3Atrue%2C%22location_type%22%3A5%2C%22outer_object_element_id%22%3A%22u_0_g%22%2C%22object_element_id%22%3A%22u_0_g%22%2C%22is_ad_preview%22%3Afalse%2C%22is_editable%22%3Afalse%2C%22mall_how_many_post_comments%22%3A2%2C%22bump_reason%22%3A0%2C%22story_width%22%3A502%2C%22tn-str%22%3A%22-R%22%7D&numpagerclicks&containerorderingmode=toplevel&av=' + suffix
     else:
-        url = "https://www.facebook.com/ajax/ufi/comment_fetch.php?dpr=1"
-        data = "ft_ent_identifier=" + objid + "&viewas&source=2&offset=0&length=50&orderingmode=toplevel&section=default&feed_context=%7B%22is_viewer_page_admin%22%3Afalse%2C%22is_notification_preview%22%3Afalse%2C%22autoplay_with_channelview_or_snowlift%22%3Afalse%2C%22video_player_origin%22%3A%22permalink%22%2C%22fbfeed_context%22%3Atrue%2C%22location_type%22%3A5%2C%22outer_object_element_id%22%3A%22u_0_e%22%2C%22object_element_id%22%3A%22u_0_e%22%2C%22is_ad_preview%22%3Afalse%2C%22is_editable%22%3Afalse%2C%22mall_how_many_post_comments%22%3A2%2C%22bump_reason%22%3A0%2C%22story_width%22%3A502%2C%22tn-str%22%3A%22-R%22%7D&numpagerclicks&av=&__user=0&__a=1&__dyn=5V8WXBzamaUmgDBzFHpUR1ycCzSczVbGAdyeGBXrWqF1eU8EnmdwFF6xCahUKFGV8kGdBCyEnCG22aUKEjACkwy48G5WAAzppenKtqx2AcUKmcAAxaFS58-EpUyidzoKnGh4-9AZ4oK48nyp8Fecx2egO8hqwVx29J4xeumuibBDxa366e59HCypHh46EO4EiVbiKaCUkV-8UoGTx67kh3ouzHyoSaCwBzAq4rG-Gx1p8CcnykGmV7GiumpiaA8DDtwxk-32ibK2hyVtKqdyUaopx3yUymiaVEGCXXghx69jGeyV8V7LhpUHAUGuq9xlai9CBAJ1e7ESmiaVpoPhbx6uehFUOaBG9DADCy8OESbx2eGFU&__req=2&__be=-1&__pc=PHASED%3ADEFAULT&__rev=3803187&lsd=AVoslYXd"
+        data = "ft_ent_identifier=" + objid + '&viewas&source=2&offset=0&length=1&orderingmode=toplevel&section=default&feed_context=%7B%22is_viewer_page_admin%22%3Afalse%2C%22is_notification_preview%22%3Afalse%2C%22autoplay_with_channelview_or_snowlift%22%3Afalse%2C%22video_player_origin%22%3A%22permalink%22%2C%22fbfeed_context%22%3Atrue%2C%22location_type%22%3A5%2C%22outer_object_element_id%22%3A%22u_0_e%22%2C%22object_element_id%22%3A%22u_0_e%22%2C%22is_ad_preview%22%3Afalse%2C%22is_editable%22%3Afalse%2C%22mall_how_many_post_comments%22%3A2%2C%22bump_reason%22%3A0%2C%22story_width%22%3A502%2C%22tn-str%22%3A%22-R%22%7D&numpagerclicks&av=' + suffix
 
     response_body = slurp(
-        url, headers={'Cookie': 'datr=A1DOWofb9lsyZC9IH-VQDMzn'}, data=data)
-    #print(response_body)
+        url, headers={'Cookie': cookie}, data=data)
     response_parsed = json.loads(response_body.replace("for (;;);", ""))
-    #if commentid:
-    #    import code
-    #    code.interact(local=locals())
     c = response_parsed['jsmods']['require'][0][3][1]
 
     output_comments = []
