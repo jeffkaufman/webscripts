@@ -653,44 +653,5 @@ def server():
     # run on port 8010
     make_server('',8010,application).serve_forever()
 
-def recalculate_fb_token():
-    redirect_url = "https://www.jefftk.com/"
-
-    print "We need to regenerate a long-lived access token for facebook"
-    print "Load the following URL in your browser:"
-    url = ("https://www.facebook.com/dialog/oauth?"
-           "client_id=%s"
-           "&scope=public_profile,basic_info,user_posts,user_managed_groups,user_friends"
-           "&redirect_uri=%s") % (FB_APP_ID, redirect_url)
-    print " ", url
-    print "paste the full url it redirects you to press enter"
-    r = raw_input("> ")
-    fb_code = re.findall('code=([^#]*)#_=_$', r)[0]
-
-    def slurp_access_token(url):
-        r = urllib2.urlopen(urllib2.Request(url)).read()
-        return json.loads(r)['access_token']
-
-    short_lived_token = slurp_access_token(
-        "https://graph.facebook.com/oauth/access_token?"
-        "client_id=%s"
-        "&redirect_uri=%s"
-        "&client_secret=%s"
-        "&code=%s" % (FB_APP_ID, redirect_url, FB_APP_SECRET, fb_code))
-
-    long_lived_token = slurp_access_token(
-        "https://graph.facebook.com/oauth/access_token?"
-        "client_id=%s&"
-        "client_secret=%s&"
-        "grant_type=fb_exchange_token&"
-        "fb_exchange_token=%s" % (FB_APP_ID, FB_APP_SECRET, short_lived_token))
-
-    print "Set:"
-    print "  FB_CODE='%s'" % long_lived_token
-
-    print "Then restart uwsgi: sudo service uwsgi-comments restart"
-
-
 if __name__ == "__main__":
-    {"server": server,
-     "fbtoken": recalculate_fb_token}[sys.argv[1]]()
+    server()
