@@ -34,7 +34,7 @@ def start():
     '&'.join('%s=%s' % (k, urllib.parse.quote(v)) for (k, v) in keys.items())))
   assert r['statusCode'] == 200
   jsonUrl = r['data']['jsonUrl']
-  while True:
+  for i in range(200):
     time.sleep(5)
     r = fetch_json(jsonUrl)
     statusCode = r['statusCode'] if 'statusCode' in r else r['data']['statusCode']
