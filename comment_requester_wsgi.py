@@ -250,7 +250,7 @@ def fb_comment_fetcher(objid, raw_names, commentid=None):
         uid = comment['author']
         if uid in FB_SHOW_BLACKLIST:
             continue
-        message = escape(comment['body']['text'])
+        message = escape(comment['body']['text']).replace('\n', '<br>')
 
         ts = int(comment['timestamp']['time'])
 
