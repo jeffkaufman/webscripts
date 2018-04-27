@@ -32,7 +32,7 @@ I find this elisp useful:
     (start-process "make-rss" "make-rss" "~/bin/makerss-and-reverserss.sh")
     (set-process-sentinel (get-process "make-rss") 'process-sentinel))
 
-For experimenting with AMP I have the following in my nginx config:
+For experimenting with AMP I had the following in my nginx config:
 
   http {
     ...
@@ -907,7 +907,6 @@ class Post:
       head.append(parse(SNIPPETS['google_analytics_nonamp']))
 
 
-    # TODO: get GA into amp
     # TODO: look into ld json schema for amp
 
     if is_amp:
