@@ -894,6 +894,27 @@ class Post:
       head.append(etree.Element('link', rel='amphtml', href='%s.amp' % (
         config.relative_url(self.link()))))
 
+    if is_amp:
+      head.append(parse('''\
+<script async custom-element="amp-ad"
+   src="https://cdn.ampproject.org/v0/amp-ad-0.1.js"></script>'''))
+    else:
+      head.append(parse('''\
+<script async='async' src='https://www.googletagservices.com/tag/js/gpt.js'></script>'''))
+      head.append(parse('''\
+<script>
+  var googletag = googletag || {};
+  googletag.cmd = googletag.cmd || [];
+</script>'''))
+      head.append(parse('''\
+<script>
+  googletag.cmd.push(function() {
+      googletag.defineSlot('/21707489405/post_bottom_square', [300, 250], 'div-gpt-ad-1524882696974-0').addService(googletag.pubads());
+  googletag.pubads().enableSingleRequest();
+  googletag.enableServices();
+});
+</script>'''))
+
     title = etree.Element('title')
     title.text = self.title
     head.append(title)
@@ -990,6 +1011,22 @@ class Post:
     in self.services))))
 
     wrapper.append(content)
+
+    if is_amp:
+      wrapper.append(parse('''\
+<p>
+<amp-ad width=300 height=250
+  type="doubleclick"
+  data-slot="/21707489405/post_bottom_square">
+</amp-ad>'''))
+    else:
+      wrapper.append(parse('''\
+<div id='div-gpt-ad-1524882696974-0' style='height:250px; width:300px;'>
+  <script>
+    googletag.cmd.push(function() { googletag.display('div-gpt-ad-1524882696974-0'); });
+  </script>
+</div>
+'''))
 
     best_posts = [self.posts_by_slug[slug]
                   for slug, _ in random.sample(BEST_POSTS, 5)]
