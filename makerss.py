@@ -1011,7 +1011,7 @@ class Post:
     in self.services))))
 
     wrapper.append(content)
-
+    wrapper.append(parse('<p>'))
     if is_amp:
       wrapper.append(parse('''\
 <p>
