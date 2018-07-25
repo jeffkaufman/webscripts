@@ -57,6 +57,8 @@ import lxml.html
 from copy import deepcopy
 from collections import defaultdict
 
+USE_DOUBLECLICK=True
+
 class Configuration:
   def __init__(self):
     self.site_url = 'https://www.jefftk.com'
@@ -710,7 +712,7 @@ class Post:
           fb_link = 'https://www.facebook.com/jefftk/posts/%s' % token
         services.append((2, 'facebook', 'fb', fb_link, token))
       elif service == 'lw':
-        lw_link = 'https://lesswrong.com/lw/%s' % token
+        lw_link = 'https://lesswrong.com/%s' % token
         services.append((3, 'lesswrong', 'lw', lw_link, token))
       elif service == 'ea':
         ea_link = 'http://effective-altruism.com/ea/%s' % token
@@ -1013,12 +1015,24 @@ class Post:
     wrapper.append(content)
     wrapper.append(parse('<p>'))
     if is_amp:
-      wrapper.append(parse('''\
+      if USE_DOUBLECLICK:
+        wrapper.append(parse('''\
 <p>
 <amp-ad width=300 height=250
   type="doubleclick"
   data-slot="/21707489405/post_bottom_square">
 </amp-ad>'''))
+      else:
+        wrapper.append(parse('''\
+<p>
+<amp-ad width="100vw" height="320" type="adsense"
+  data-ad-client="ca-pub-0341874384016383"
+  data-ad-slot="4122621225"
+  data-auto-format="rspv"
+  data-full-width>
+    <div overflow></div>
+</amp-ad>'''))
+                
     else:
       wrapper.append(parse('''\
 <div id='div-gpt-ad-1524882696974-0' style='height:250px; width:300px;'>
@@ -1145,7 +1159,12 @@ def parsePosts():
 
         post_elements = element.findall('*')
         title_h3 = post_elements[0]
-        tags_h4 = post_elements[1]
+        try:
+          tags_h4 = post_elements[1]
+        except Exception:
+          print(post_elements)
+          print(title_h3.text)
+          raise              
         assert title_h3.tag == 'h3'
         title = title_h3.text
         assert tags_h4.tag == 'h4'
