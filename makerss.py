@@ -571,7 +571,35 @@ function pullComments(wsgiUrl, serviceName) {
 #title-date-tags { width: 100% }
 #wrapper { margin: 8px}
 body {margin: 0}
-#title-date-tags h3 { margin: 0 }''',
+#title-date-tags h3 { margin: 0 }
+#newer-older {
+  display: flex;
+}
+  #newer, #older {
+  background-color: #EEE;
+  padding: 1em;
+  margin: 0.25em;
+  border-radius: 0.5em;
+  flex: 50%;
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+}
+.arr {
+}
+#newer > .arr {
+  margin-right: 1em;
+}
+#older > .arr {
+  margin-left: em;
+}
+#older {
+  justify-content: flex-end;
+}
+#div-gpt-ad-1524882696974-0 {
+  padding: 1em;
+}
+''',
 
   'amp_boilerplate': '<style amp-boilerplate="">body{-webkit-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-moz-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-ms-animation:-amp-start 8s steps(1,end) 0s 1 normal both;animation:-amp-start 8s steps(1,end) 0s 1 normal both}@-webkit-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-moz-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-ms-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-o-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}</style>',
 
@@ -968,6 +996,31 @@ class Post:
 
     content.append(element)
 
+    newer_section = ''
+    if self.newer_post:
+      newer_section='''\
+<a id=newer href="%s">
+  <div class=arr>
+    &larr;
+  </div>
+  %s
+</a>''' % (config.relative_url(self.newer_post.link()),
+           self.newer_post.title)
+
+    older_section = ''
+    if self.older_post:
+      older_section = '''\
+<a id=older href="%s">
+  %s
+  <div class=arr>
+    &rarr;
+  </div>
+</a>''' % (config.relative_url(self.older_post.link()),
+           self.older_post.title)
+
+    content.append(parse('<div id=newer-older>%s%s</div>' % (
+      newer_section, older_section)))
+
     if self.services:
       content.append(parse('<p>Comment via: %s</p>\n' % (
         ', '.join('<a href="%s">%s</a>' % (service_link, service_name)
@@ -1032,7 +1085,7 @@ class Post:
   data-full-width>
     <div overflow></div>
 </amp-ad>'''))
-                
+
     else:
       wrapper.append(parse('''\
 <div id='div-gpt-ad-1524882696974-0' style='height:250px; width:300px;'>
@@ -1049,12 +1102,6 @@ class Post:
       ''.join('<li><p><a href="%s">%s</a></p></li>' % (
         config.relative_url(other.link()),
         other.title) for other in best_posts))
-    for section, other in [('Older Post', self.older_post),
-                          ('Newer Post', self.newer_post)]:
-      if other:
-        best_posts_html = "%s<p>%s:</p><ul><li><p><a href='%s'>%s</a></p></li></ul>" % (
-          best_posts_html, section, config.relative_url(other.link()),
-          other.title)
 
     wrapper.append(parse(
       '<div id="top-posts">%s</div>' % best_posts_html))
@@ -1137,7 +1184,7 @@ def parsePosts():
                    ("’", "'")]:
         raw_text = raw_text.replace(f, r)
       outf.write(raw_text)
-  
+
   with open(cleaned_fname) as inf:
     tree = etree.parse(inf, etree.HTMLParser())
     body = tree.find('body')
@@ -1164,7 +1211,7 @@ def parsePosts():
         except Exception:
           print(post_elements)
           print(title_h3.text)
-          raise              
+          raise
         assert title_h3.tag == 'h3'
         title = title_h3.text
         assert tags_h4.tag == 'h4'
