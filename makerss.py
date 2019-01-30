@@ -113,7 +113,14 @@ class Configuration:
 config = Configuration()
 
 BEST_POSTS = [
-  ('2017-09-15', 'Superintelligence Risk Project: Conclusion'),
+  ('2018-07-10', 'How to Parent More Predictably'),
+  ('2018-07-03', 'Street Training'),
+  ('2018-04-29', 'Soundproofing the Ceiling'),
+  ('2018-01-31', 'Recording Your Own CD'),
+  ('2018-01-20', 'More Considerations on Buying a House'),
+  ('2018-01-13', 'Dividing Tasks'),
+  ('2017-09-28', 'Guardedness in EA'),
+  ('2017-09-15', 'Superintelligence Risk Project'),
   ('2016-12-26', 'Mandolin Teaching Videos'),
   ('2016-10-24', 'Details Behind the InIn Document'),
   ('2016-10-02', 'Responsible Transparency Consumption'),
