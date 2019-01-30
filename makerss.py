@@ -581,8 +581,9 @@ body {margin: 0}
 #title-date-tags h3 { margin: 0 }
 #newer-older {
   display: flex;
+  margin-top: 1em;
 }
-  #newer, #older {
+#newer, #older, #newer-blank {
   background-color: #EEE;
   padding: 1em;
   margin: 0.25em;
@@ -591,6 +592,9 @@ body {margin: 0}
   display: flex;
   align-items: center;
   text-decoration: none;
+}
+#newer-blank {
+  background-color: #FFF;
 }
 .arr {
 }
@@ -1003,7 +1007,6 @@ class Post:
 
     content.append(element)
 
-    newer_section = ''
     if self.newer_post:
       newer_section='''\
 <a id=newer href="%s">
@@ -1013,6 +1016,8 @@ class Post:
   %s
 </a>''' % (config.relative_url(self.newer_post.link()),
            self.newer_post.title)
+    else:
+      newer_section='<div id=newer-blank></div>'
 
     older_section = ''
     if self.older_post:
