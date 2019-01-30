@@ -754,7 +754,11 @@ class Post:
         lw_link = 'https://lesswrong.com/%s' % token
         services.append((3, 'lesswrong', 'lw', lw_link, token))
       elif service == 'ea':
-        ea_link = 'http://effective-altruism.com/ea/%s' % token
+        suffix = 'posts'
+        if token.startswith('old/'):
+          _, token = token.split('/', 1)
+          suffix = 'ea'
+        ea_link = 'http://effective-altruism.com/%s/%s' % (suffix, token)
         services.append((4, 'the EA Forum', 'ea', ea_link, token))
       elif service == 'r':
         subreddit, post_id = token.split('/')
