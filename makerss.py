@@ -1135,10 +1135,14 @@ class Post:
 
     if is_amp:
       for external in amp_external:
-        external_type = 'template' if external == 'mustache' else 'element'
+        external_type = 'template'
+        version = '0.1'
+        if external == 'mustache':
+          external_type = 'template'
+          version = '0.2'
         ce_script = etree.Element(
           'script', async='',
-          src='https://cdn.ampproject.org/v0/amp-%s-0.1.js' % external)
+          src='https://cdn.ampproject.org/v0/amp-%s-%s.js' % (external, version))
         ce_script.set('custom-%s' % external_type, 'amp-%s' % external)
         ce_script.tail = '\n'
         head.append(ce_script)
