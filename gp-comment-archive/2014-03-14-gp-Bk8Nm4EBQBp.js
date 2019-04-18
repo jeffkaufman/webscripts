@@ -1,0 +1,1 @@
+[["Adam&nbsp;Yie", "https://plus.google.com/114873051319510815414", "gp-1394838288184", "<p>Might be worth pointing out that you also minimized guest costs by organizing places to stay for a number of out-of-town folks.</p>", 1394838288]]

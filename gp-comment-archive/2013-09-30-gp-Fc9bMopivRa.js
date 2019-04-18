@@ -1,0 +1,1 @@
+[["David&nbsp;Chudzicki", "https://plus.google.com/106120852580068301475", "gp-1380560648771", "<p>Your parenthetical at the end made sense to me. You write: \"But it doesn't sound like the law works that way.\"\n<br>\n<br>\nI haven't looked at the ruling. Is it the court deciding that the law actually \ndoes\n work that way? Or is it about something else?</p>", 1380560648]]

@@ -1,0 +1,1 @@
+[["Chris", "https://plus.google.com/117346402173047680184", "gp-1331581078306", "<p>I think Effective Giving is a better term.  Effective applies to the giving, but smart applies to the giver and thus sounds a little arrogant to me.</p>", 1331581078]]

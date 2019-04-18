@@ -1,0 +1,1 @@
+[["Daniel", "https://plus.google.com/113952791760990667476", "gp-1494708649455", "<p>I imagine it comes from customer demand, as the notes have the same legal effect as regular pound notes.  There is no real danger of banks \"going rogue\" and printing too much, the govt would shut that down fast.</p>", 1494708649]]

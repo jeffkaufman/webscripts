@@ -1,0 +1,1 @@
+[["Todd", "https://plus.google.com/112947709146257842066", "gp-1340684373375", "<p>What's wrong with being selfish?\n<br>\n<br>\nAlso, the fact that you're discussing selfishness in terms of what you do for people you like is... interesting. Most people would characterize the actions you describe as highly unselfish. </p>", 1340684373]]

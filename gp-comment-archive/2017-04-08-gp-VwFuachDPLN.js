@@ -1,0 +1,1 @@
+[["Jan-Willem", "https://plus.google.com/100580955183019057735", "gp-1491655492129", "<p>It occurs to me to wonder if this is exacerbating the \"filter bubble\" effect \u2013 people end up effectively \ncut off\n from seeing opinions that disagree with their own.</p>", 1491655492]]

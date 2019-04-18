@@ -1,0 +1,1 @@
+[["David&nbsp;Chudzicki", "https://plus.google.com/106120852580068301475", "gp-1379190532721", "<p>\" I was surprised heys were so common and petronellas were so uncommon.\"\n<br>\n<br>\nI'd take your surprise seriously! Given the original goal, I think your intuition might be as good as or better than this method. </p>", 1379190532]]

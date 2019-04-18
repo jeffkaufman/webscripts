@@ -1,0 +1,1 @@
+[["Brian", "https://plus.google.com/114156500057804356924", "gp-1505578740859", "<p>Seems like there are a lot of short-term real-world security issues that involve machine learning in some way. Consider the problem of de-biasing machine learning datasets so they don't pick up human biases. Then consider what happens when hackers do the opposite...</p>", 1505578740]]

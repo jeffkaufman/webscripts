@@ -1,0 +1,1 @@
+[["David&nbsp;German", "https://plus.google.com/111229345142780712481", "gp-1492222614116", "<p>Loft, definitely.  This would be more comfortable than a lot of RV bunk beds.  \n<br>\n<br>\nYou could consider putting a pulley or eyehook on the ceiling of the stairwell, for hoisting up bedding and luggage.</p>", 1492222614]]

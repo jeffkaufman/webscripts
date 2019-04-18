@@ -1,0 +1,1 @@
+[["Jeff&nbsp;Kaufman", "https://plus.google.com/103013777355236494008", "gp-1326548900851", "<p>@<a href=\"https://plus.google.com/105024376133521186824\">Lucas</a>\n The concerns apply somewhat, but I think getting rid of discretionary sentencing, in cases where we've tried it, has been negative.</p>", 1326548900]]

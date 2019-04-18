@@ -1,0 +1,1 @@
+[["Jan-Willem", "https://plus.google.com/100580955183019057735", "gp-1443042996208", "<p>Turns out people \nhave\n written html- (and xml-) sensitive compression algorithms. \u00a0They matter approximately not at all on the web except in really ridiculous cases.\n<br>\n<br>\nBrotli's special built-in dictionary is in some sense specialized for html/xml.</p>", 1443042996]]

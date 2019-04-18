@@ -1,0 +1,1 @@
+[["Todd", "https://plus.google.com/112947709146257842066", "gp-1353781854801", "<p>Short answer: no, because:\n<br>\n<br>\n1. Geopolitics lacks most of what sports has that makes fantasy sports fun and interesting for the players.\n<br>\n2. Fantasy sports doesn't decrease local team allegiance.</p>", 1353781854]]

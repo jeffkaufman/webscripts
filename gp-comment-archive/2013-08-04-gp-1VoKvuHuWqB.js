@@ -1,0 +1,1 @@
+[["Hassan", "https://plus.google.com/109686970531250960199", "gp-1375632997890", "<p>Given the number of people who simply don't understand how tax brackets and marginal tax rates work, I am sure there are people who are donating to charity because they think it actually saves them money.</p>", 1375632997]]

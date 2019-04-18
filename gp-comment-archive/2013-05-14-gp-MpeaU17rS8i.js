@@ -1,0 +1,1 @@
+[["Bryce", "https://plus.google.com/110073329443149494347", "gp-1368567841023", "<p>This work by Scott Page seems relevant to the comment about copies of John von Neumann taking over the world:\n<br>\n<a href=\"http://vserver1.cscs.lsa.umich.edu/~spage/pnas.pdf\">http://vserver1.cscs.lsa.umich.edu/~spage/pnas.pdf</a></p>", 1368567841]]

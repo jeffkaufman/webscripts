@@ -1,0 +1,1 @@
+[["Thomas", "https://plus.google.com/110993380381592315078", "gp-1501853174662", "<p>I would give this zero weight:  based solely on this, I think the only reasonable thing is to not update your opinion of the AI researcher you talked to at all.</p>", 1501853174]]

@@ -1,0 +1,1 @@
+[["Elmo", "https://plus.google.com/114274595318045509956", "gp-1334695986070", "<p>Darren Brown did this with Horse Racing.  He also filmed himself tossing a coin and getting ten heads in a row. \n<a href=\"http://topdocumentaryfilms.com/derren-brown-the-system/\">http://topdocumentaryfilms.com/derren-brown-the-system/</a></p>", 1334695986]]

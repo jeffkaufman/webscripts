@@ -1,0 +1,1 @@
+[["Frederic", "https://plus.google.com/118156077148469167305", "gp-1326503695649", "<p>They also try to measure how much \"need\" a charity has; they cut off one of their top rated charities because they felt that they did not have an effective way to use more money after receiving $1m+ from GiveWell!</p>", 1326503695]]
