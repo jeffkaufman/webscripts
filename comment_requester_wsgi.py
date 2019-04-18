@@ -48,90 +48,6 @@ def slurp(url, data=None, headers={}, timeout=60):
     response = urllib2.urlopen(urllib2.Request(url, data, headers), None, timeout)
     return response.read()
 
-# Google is using something that is almost, but not quite, json.  So take a strong from G+
-# and turn it into json so we can use the json parser
-#  - the string starts with ')]}' for no reason I can tell
-#  - in lists they use missing values instead of null
-#    - [1,] instead of [1,null] etc
-#  - in dictionaries they use unquoted numeric keys
-#    - {12345: "foo"} instead of {"12345": "foo"}
-def gplus_loads(s):
-    if s.startswith(")]}'"):
-        s = s[len(")]}'"):]
-    for f,r in [(",,", ",null,"),
-                ("[,", "[null,"),
-                (",]", ",null]"),
-                ("\n", "")]:
-        while f in s:
-            s = s.replace(f,r)
-    s = re.sub('{([0-9]+):', '{"\\1":', s)
-
-    try:
-        return json.loads(s)
-    except ValueError:
-        print s
-        raise
-
-# I wrote the g+ code later, so it's properly object oriented.  This is only for g+.
-class Comment(object):
-    def __init__(self, raw):
-        self.user_id = raw[6]
-        assert self.user_id == raw[25][1]
-        self.user = raw[25][0]
-
-        message = []
-        for message_segment in raw[27][-1]:
-            if message_segment[0] == 0:
-                # some text
-                message.append(escape(message_segment[1].replace(u"\ufeff", "")))
-            elif message_segment[0] == 1:
-                # newline
-                message.append("<br>")
-            elif message_segment[0] == 2:
-                # link
-                link = message_segment[3][0]
-                message.append('<a href="%s">%s</a>' % (escape(link), escape(link)))
-            elif message_segment[0] == 3:
-                # tag
-                user_link = "https://plus.google.com/%s" % escape(message_segment[4][1])
-                message.append('@<a href="%s">%s</a>' % (
-                    user_link, sanitize_name(message_segment[1])))
-            elif message_segment[0] == 4:
-                # hashtag
-                # don't bother linking
-                message.append(escape(message_segment[1]))
-            else:
-                import pprint
-                pprint.pprint(raw)
-                raise Exception("unknown message type %s" % message_segment[0])
-        self.message = "\n".join(message)
-
-        self.anchor = raw[3]
-        self.ts = raw[3]/1000
-
-    def user_link(self):
-        return "https://plus.google.com/%s" % self.user_id
-
-# This is also only for g+
-class Post(object):
-    def __init__(self, user_id, post_id):
-        fullurl = 'https://plus.google.com/_/stream/getactivity/%s?updateId=%s' % (
-            user_id, post_id)
-
-        r = gplus_loads(slurp(fullurl))
-        assert len(r) >= 1
-
-        r = r[0]
-
-        assert r[0] == "os.u"
-        assert len(r) == 2
-
-        self.comments = []
-        for comment_raw in r[1][7]:
-            self.comments.append(Comment(comment_raw))
-
-        self.link = "https://plus.google.com/%s/posts/%s" % (user_id, post_id)
-
 def die500(start_response, e):
     trb = "%s: %s\n\n%s" % (e.__class__.__name__, e, traceback.format_exc())
 
@@ -182,20 +98,6 @@ def sanitize_names_extended(comments, raw_names):
             if len(comment) > 5 and comment[5]:
                 comment[5] = sanitize_names_extended(comment[5], raw_names)
     return comments
-
-def service_gp(gpid):
-    p = Post(GP_POSTER_ID, gpid)
-    raw_names = {}
-    out = []
-    for comment in p.comments:
-        out.append([sanitize_name(comment.user),
-                    comment.user_link(),
-                    "gp-%s" % comment.anchor,
-                    "<p>%s</p>" % comment.message,
-                    comment.ts])
-        raw_names[comment.user] = sanitize_name(comment.user)
-    return sanitize_names_extended(out, raw_names)
-
 
 def epoch(timestring):
     return int(time.mktime(
@@ -565,7 +467,6 @@ def amp_comments(json_comments):
                     json_comments)]
 
 SERVICE_FNS = {
-    'gp': service_gp,
     'fb': service_fb,
     'lw': service_lw,
     'ea': service_ea,
