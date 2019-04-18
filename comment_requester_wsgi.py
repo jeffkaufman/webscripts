@@ -467,7 +467,7 @@ def amp_comments(json_comments):
                     json_comments)]
 
 def service_gp(token):
-    cwd = os.path.driname(__file__)
+    cwd = os.path.dirname(__file__)
     gp_dir = os.path.join(cwd, 'gp-comment-archive')
     for leaf in os.listdir(gp_dir):
         if leaf.endswith('-gp-%s.js' % token):
