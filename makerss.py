@@ -945,7 +945,7 @@ class Post:
    src="https://cdn.ampproject.org/v0/amp-ad-0.1.js"></script>'''))
     else:
       head.append(parse('''\
-<script async='async' src='https://www.googletagservices.com/tag/js/gpt.js'></script>'''))
+<script async='async' src='https://securepubads.g.doubleclick.net/tag/js/gpt.js'></script>'''))
       head.append(parse('''\
 <script>
   var googletag = googletag || {};
