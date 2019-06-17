@@ -69,6 +69,7 @@ class Configuration:
     self.posts = 'p'
     self.rss = 'news.rss'
     self.rss_full = 'news_full.rss'
+    self.openring_filename = "current-openring.html"
 
     self.rss_description = "Jeff Kaufman's Writing"
 
@@ -610,6 +611,44 @@ body {margin: 0}
 #div-gpt-ad-1524882696974-0 {
   padding: 1em;
 }
+.webring {
+  max-width: 550px;
+  margin-top: 3em;
+}
+.webring .title {
+  margin: 0;
+}
+.webring .article {
+  margin: 1em 0.5rem;
+  padding: 0.5rem;
+  background: #eee;
+  border-radius: 0.5em;
+}
+@media (min-width: 550px) {
+  .webring .articles {
+    display: flex;
+  }
+  .webring .article {
+    margin: 0 0.5rem;
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .webring .article:first-child {
+    margin-left: 0;
+  }
+  .webring .article:last-child {
+    margin-right: 0;
+  }
+}
+.webring .summary {
+  font-size: 0.8rem;
+  flex: 1 1 0;
+}
+.webring .attribution {
+  text-align: right;
+  font-size: 0.8rem;
+}
 ''',
 
   'amp_boilerplate': '<style amp-boilerplate="">body{-webkit-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-moz-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-ms-animation:-amp-start 8s steps(1,end) 0s 1 normal both;animation:-amp-start 8s steps(1,end) 0s 1 normal both}@-webkit-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-moz-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-ms-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-o-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}</style>',
@@ -714,7 +753,7 @@ class Update:
   quote(html))
 
 class Post:
-  def __init__(self, slug, date, title, tags, element):
+  def __init__(self, slug, date, title, tags, element, openring):
     self.slug = slug
     self.date = date
     self.title = title
@@ -722,6 +761,7 @@ class Post:
     tags = [x for x in tags if x != config.notyet_token]
     self.name = title_to_url_component(title)
     self.element = element
+    self.openring = openring
     self.updates = {}
 
     # these are filled in externally for published posts
@@ -1082,6 +1122,9 @@ class Post:
     in self.services))))
 
     wrapper.append(content)
+
+    wrapper.append(self.openring)
+
     wrapper.append(parse('<p>'))
     if is_amp:
       if USE_DOUBLECLICK:
@@ -1205,6 +1248,9 @@ def parsePosts():
         raw_text = raw_text.replace(f, r)
       outf.write(raw_text)
 
+  with open(config.full_filename(config.openring_filename)) as inf:
+    openring = parse(inf.read())
+
   with open(cleaned_fname) as inf:
     tree = etree.parse(inf, etree.HTMLParser())
     body = tree.find('body')
@@ -1249,7 +1295,7 @@ def parsePosts():
           first.text = tags_h4.tail
           element.insert(0, first)
 
-        post = Post(slug, date, title, tags, element)
+        post = Post(slug, date, title, tags, element, openring)
         posts.append(post)
         if post.published:
           published_posts.append(post)
