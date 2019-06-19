@@ -647,7 +647,7 @@ body {margin: 0}
 }
 .webring .attribution {
   text-align: right;
-  font-size: 0.8rem;
+  margin-right: 0.5rem;
 }
 ''',
 
