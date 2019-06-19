@@ -650,7 +650,7 @@ body {margin: 0}
   margin-right: 0.5rem;
 }
 pre {
-  overflow-x: hidden;
+  overflow-x: scroll;
 }
 ''',
 
