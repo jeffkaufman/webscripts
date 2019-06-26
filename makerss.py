@@ -1422,7 +1422,7 @@ def start():
 <style>
 .headfoot { margin: 3px }
 h2 { margin: .5em }
-body { margin: 0; padding: 0}
+      body { margin: 0; padding: 0; max-width: 35em;}
 li { list-style-type: none; margin: 0 }
 li a { display: block; padding: .75em }
 li a:link { text-decoration: none }
@@ -1430,7 +1430,6 @@ li a:link { text-decoration: none }
 ul { margin: 0; padding: 0 }
 li:nth-child(odd) {
   background: #EEE;
-  background: linear-gradient(to right, #EEE 400px, #FFF 600px);
 }
 .date { font-size: 85%% ; color: black }
 </style>
