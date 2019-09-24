@@ -939,6 +939,31 @@ class Post:
             pass
 
           iframe.set('sandbox', 'allow-scripts allow-same-origin')
+    else:
+      # make youtube responsive
+      for iframe in element.findall('.//iframe'):
+        if 'youtube' in iframe.get('src'):
+          width, height = iframe.attrib['width'], iframe.attrib['height']
+          del iframe.attrib['width']
+          del iframe.attrib['height']
+          div = etree.Element('div')
+          div.attrib['style'] = (
+            'position: relative;'
+            'padding-bottom: %.2f%%;'
+            'height: 0;'
+            'overflow: hidden;'
+            'max-width: 100%%;') % (100 * float(height) / float(width))
+          iframe.attrib['style'] = (
+            'position: absolute;'
+            'top: 0;'
+            'left: 0;'
+            'width: 100%;'
+            'height: 100%;')
+          parent = iframe.getparent()
+          iframe_index = list(parent).index(iframe)
+          parent.remove(iframe);
+          parent.insert(iframe_index, div)
+          div.append(iframe)
 
     no_tags_no_ws = re.sub('<[^>]*>', '',
                            re.sub('\s+',' ',
