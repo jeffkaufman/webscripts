@@ -592,7 +592,12 @@ body {margin: 0}
   justify-content: flex-end;
 }
 #div-gpt-ad-1524882696974-0 {
-  padding: 1em;
+  padding-top: 1em;
+  padding-bottom: 1em;
+  text-align: center;
+}
+#ad-wrapper {
+  max-width: 550px;
 }
 .webring {
   max-width: 550px;
@@ -1005,7 +1010,16 @@ class Post:
       head.append(parse('''\
 <script>
   googletag.cmd.push(function() {
-      googletag.defineSlot('/21707489405/post_bottom_square', [300, 250], 'div-gpt-ad-1524882696974-0').addService(googletag.pubads());
+      var sizes = [[300, 250]];
+      if (window.innerWidth > 550) {
+        // desktop
+        sizes.push([550, 250]);
+      } else {
+        var useWidth = window.innerWidth - 8 - 8;
+        sizes.push([useWidth, 250]);
+        sizes.push([useWidth, Math.round(useWidth / 300 * 250)]);
+      }
+      googletag.defineSlot('/21707489405/post_bottom_square', sizes, 'div-gpt-ad-1524882696974-0').addService(googletag.pubads());
   googletag.pubads().enableSingleRequest();
   googletag.enableServices();
 });
@@ -1158,10 +1172,12 @@ class Post:
 
     else:
       wrapper.append(parse('''\
-<div id='div-gpt-ad-1524882696974-0' style='height:250px; width:300px;'>
+<div id="ad-wrapper">
+<div id='div-gpt-ad-1524882696974-0'>
   <script>
     googletag.cmd.push(function() { googletag.display('div-gpt-ad-1524882696974-0'); });
   </script>
+</div>
 </div>
 '''))
 
