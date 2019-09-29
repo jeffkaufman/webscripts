@@ -1237,6 +1237,10 @@ class Post:
                                       comments_links))
 
     html = self.bare_html(element)
+    # Temporary work-around for LW not handling relative URLs in RSS import
+    # https://github.com/LessWrong2/Lesswrong2/issues/2434
+    for prefix in ['href="', 'src="', 'srcset="', ' 550w,']:
+      html = html.replace("%s/" % prefix, '%s%s/' % (prefix, config.site_url))
 
     return '''
 <item>
