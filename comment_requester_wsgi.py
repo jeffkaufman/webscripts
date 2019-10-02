@@ -87,97 +87,11 @@ def lat_refresh_token():
         client_id=L_CLIENT_ID,
         client_secret=L_CLIENT_SECRET)
 
-def sanitize_names_extended(comments, raw_names):
-    for a, b in INITIALS.items(): raw_names[a] = b
-
-    for comment in comments:
-        for raw_name, sanitized_name in raw_names.items():
-            comment[3] = comment[3].replace(raw_name, sanitized_name)
-            if raw_name in comment[3]:
-                print raw_name
-            if len(comment) > 5 and comment[5]:
-                comment[5] = sanitize_names_extended(comment[5], raw_names)
-    return comments
-
 def epoch(timestring):
     return int(time.mktime(
              dateutil.parser.parse(timestring)
                             .astimezone(dateutil.tz.tzlocal())
                             .timetuple()))
-
-def sanitize_name(name):
-    name = INITIALS.get(name, name)
-    name = name.split()[0]
-    return name
-
-
-def service_fb(objid):
-    raw_names = {}
-    fb_comments = fb_comment_fetcher(objid, raw_names)
-    return sanitize_names_extended(fb_comments, raw_names)
-
-def fb_comment_fetcher(objid, raw_names, commentid=None):
-    with open('/home/jefftk/webscripts/fb_lsd.txt') as inf:
-        lsd = inf.read().strip()
-
-    with open('/home/jefftk/webscripts/fb_dyn_fetch.txt') as inf:
-        request_json = json.loads(inf.read())
-        suffix = '&__user=' + request_json['url'].split('&__user=')[-1] + "&lsd=" + lsd
-
-    with open('/home/jefftk/webscripts/fb_%s_fetch.txt' % (
-            'reply' if commentid else 'comment')) as inf:
-        request_json = json.loads(inf.read())
-        url = request_json['full_url']
-        for request_header in request_json['headers']['request']:
-            if request_header.startswith("cookie: "):
-                _, cookie = request_header.split(' ', 1)
-
-    if objid.startswith("4102153_"):
-        objid = objid.replace("4102153_", "")
-
-    if commentid:
-        data = 'ft_ent_identifier=' + objid + '&parent_comment_ids[0]=' + commentid + '&source&offsets[0]=0&lengths[0]=50&feed_context=%7B%22is_viewer_page_admin%22%3Afalse%2C%22is_notification_preview%22%3Afalse}%2C%22autoplay_with_channelview_or_snowlift%22%3Afalse%2C%22video_player_origin%22%3A%22permalink%22%2C%22fbfeed_context%22%3Atrue%2C%22location_type%22%3A5%2C%22outer_object_element_id%22%3A%22u_0_g%22%2C%22object_element_id%22%3A%22u_0_g%22%2C%22is_ad_preview%22%3Afalse%2C%22is_editable%22%3Afalse%2C%22mall_how_many_post_comments%22%3A2%2C%22bump_reason%22%3A0%2C%22story_width%22%3A502%2C%22tn-str%22%3A%22-R%22%7D&numpagerclicks&containerorderingmode=toplevel&av=' + suffix
-    else:
-        data = "ft_ent_identifier=" + objid + '&viewas&source=2&offset=0&length=50&orderingmode=toplevel&section=default&feed_context=%7B%22is_viewer_page_admin%22%3Afalse%2C%22is_notification_preview%22%3Afalse%2C%22autoplay_with_channelview_or_snowlift%22%3Afalse%2C%22video_player_origin%22%3A%22permalink%22%2C%22fbfeed_context%22%3Atrue%2C%22location_type%22%3A5%2C%22outer_object_element_id%22%3A%22u_0_e%22%2C%22object_element_id%22%3A%22u_0_e%22%2C%22is_ad_preview%22%3Afalse%2C%22is_editable%22%3Afalse%2C%22mall_how_many_post_comments%22%3A2%2C%22bump_reason%22%3A0%2C%22story_width%22%3A502%2C%22tn-str%22%3A%22-R%22%7D&numpagerclicks&av=' + suffix
-
-    response_body = slurp(
-        url, headers={'Cookie': cookie}, data=data)
-    response_parsed = json.loads(response_body.replace("for (;;);", ""))
-    c = response_parsed['jsmods']['require'][0][3][1]
-
-    output_comments = []
-
-    for comment in c['comments']:
-        comment_id = comment["id"]
-        uid = comment['author']
-        if uid in FB_SHOW_BLACKLIST:
-            continue
-        message = escape(comment['body']['text']).replace('\n', '<br>')
-
-        ts = int(comment['timestamp']['time'])
-
-        profile = c['profiles'][uid]
-
-        fullname = profile['name']
-        firstname = profile['firstName']
-        raw_names[fullname] = firstname
-        name = INITIALS.get(fullname, escape(firstname))
-
-        anchor = 'fb-%s' % (escape(comment_id))
-
-        user_link = "https://www.facebook.com/%s/posts/%s?comment_id=%s" % (
-            FB_POSTER_ID, objid, comment_id.split("_")[-1])
-        if uid in FB_LINK_BLACKLIST:
-            user_link = '#'
-
-        replies = []
-        if 'replyauthors' in comment:
-            replies = fb_comment_fetcher(objid, raw_names, comment_id)
-
-        output_comments.append([
-            name, user_link, anchor, message, ts, replies])
-
-    return output_comments
 
 def parse_reddit_style_json_comment(raw_comment, url):
     raw_comment = raw_comment["data"]
@@ -466,18 +380,20 @@ def amp_comments(json_comments):
             for key, (author, source_link, anchor, text, timestamp) in flatten(
                     json_comments)]
 
-def service_gp(token):
-    cwd = os.path.dirname(__file__)
-    gp_dir = os.path.join(cwd, 'gp-comment-archive')
-    for leaf in os.listdir(gp_dir):
-        if leaf.endswith('-gp-%s.js' % token):
-            with open(os.path.join(gp_dir, leaf)) as inf:
-                return json.loads(inf.read())
-    return []            
+def service_archive(service):
+    def service_helper(token):
+        cwd = os.path.dirname(__file__)
+        service_dir = os.path.join(cwd, service + '-comment-archive')
+        for leaf in os.listdir(service_dir):
+            if leaf.endswith('%s-%s.js' % (service, token)):
+                with open(os.path.join(service_dir, leaf)) as inf:
+                    return json.loads(inf.read())
+        return []
+    return service_helper
 
 SERVICE_FNS = {
-    'gp': service_gp,
-    'fb': service_fb,
+    'gp': service_archive('gp'),
+    'fb': service_archive('fb'),
     'lw': service_lw,
     'ea': service_ea,
     'r': service_r,
