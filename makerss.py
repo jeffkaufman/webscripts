@@ -408,6 +408,8 @@ function service_abbr(service) {
     return 'g+';
   } else if (service == "lesswrong") {
     return 'lw';
+  } else if (service == "the EA Forum") {
+    return 'ea';
   } else if (service == "hacker news") {
     return 'hn';
   } else if (service == "facebook") {
