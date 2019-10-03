@@ -267,21 +267,52 @@ def pull_reddit_style_rss(url):
              ts(item))
             for item in items]
 
-def service_lw(token):
+def lw_style_service(token, service, domain):
+    if token.startswith('posts/'):
+        token = token[len('posts/'):]
+    
     m = re.match('^[a-zA-Z0-9]+$', token)
     if not m:
         return []
 
-    url = "http://lesswrong.com/lw/%s.rss" % token
-    return pull_reddit_style_rss(url)
+    response = json.loads(slurp("%s/graphql" % domain, data='{"query": "{comments(input: { terms: { view: \\"postCommentsOld\\", postId: \\"%s\\", }}) { results { _id postedAt author parentCommentId contents { html }}}}"}'%token, headers={'Content-Type': 'application/json'}))
+
+    comments = {}
+    for comment in response['data']['comments']['results']:
+        # output format:
+        #   username
+        #   permalink
+        #   comment id (derived from link)
+        #   comment_html
+        #   timestamp
+        #   children
+        #   parent_id (temporary)
+        comments[comment["_id"]] = [
+            comment["author"],
+            "%s/posts/%s#%s" % (domain, token, comment["_id"]),
+            "%s-%s" % (service, comment["_id"]),
+            comment["contents"]["html"],
+            epoch(comment["postedAt"]),
+            [],
+            comment["parentCommentId"]]
+    root = []
+    for comment_id, comment in comments.items():
+        parent_id = comment[-1]
+        if parent_id:
+            parent = comments[parent_id][-2]  # -2 is children
+        else:
+            parent = root
+        parent.append(comment)
+    for comment in comments.values():
+        del comment[-1]  # remove temporary parent_id
+    return root
+
+
+def service_lw(token):
+    return lw_style_service(token, 'lw', 'https://www.lesswrong.com')
 
 def service_ea(token):
-    m = re.match('^[a-zA-Z0-9]+$', token)
-    if not m:
-        return []
-
-    url = "http://effective-altruism.com/ea/%s.rss" % token
-    return pull_reddit_style_rss(url)
+    return lw_style_service(token, 'ea', 'https://forum.effectivealtruism.org')
 
 def service_r(token):
     m = re.match('^[a-zA-Z0-9]+/[a-zA-Z0-9]+$', token)
