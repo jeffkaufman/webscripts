@@ -413,6 +413,8 @@ def amp_comments(json_comments):
 
 def service_archive(service):
     def service_helper(token):
+        if token.startswith("note/"):
+            token = token[len("note/"):]
         cwd = os.path.dirname(__file__)
         service_dir = os.path.join(cwd, service + '-comment-archive')
         for leaf in os.listdir(service_dir):
@@ -439,7 +441,7 @@ def start(environ, start_response):
 
     if path.startswith("/json-comments"):
         _, path_initial, service, token = path.split("/", 3)
-        
+
         service_fn = SERVICE_FNS.get(service, None)
 
         if path_initial == "json-comments-nocache":
