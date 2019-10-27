@@ -861,7 +861,7 @@ class Post:
 
   def bare_html(self, element):
     # don't include the wrapping div
-    return '\n'.join(self.stringify_(x) for x in element.findall('*'))
+    return '<p>' + '\n'.join(self.stringify_(x) for x in element.findall('*'))
 
   def blog_entry_summary(self):
     element = deepcopy(self.element)
@@ -896,6 +896,8 @@ class Post:
   def html(self, is_amp):
     element = deepcopy(self.element)
 
+    element.insert(0, parse('<p>'))
+    
     if not self.published:
       element.insert(0, parse('<p><i>draft post</i></p>'))
 
