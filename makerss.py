@@ -1209,7 +1209,7 @@ class Post:
 
     if is_amp:
       for external in amp_external:
-        external_type = 'template'
+        external_type = 'element'
         version = '0.1'
         if external == 'mustache':
           external_type = 'template'
