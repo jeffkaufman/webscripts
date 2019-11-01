@@ -97,6 +97,15 @@ class Configuration:
 config = Configuration()
 
 BEST_POSTS = [
+  ('2019-09-29', 'Candy for Nets'),
+  ('2019-09-16', 'Effective Altruism and Everyday Decisions'),
+  ('2019-09-15', 'Focus'),
+  ('2019-05-29', "There's Lots More To Do"),
+  ('2019-03-12', 'Equal Parenting Advice for Dads'),
+  ('2018-12-22', 'Boston Solstice 2018 Retrospective'),
+  ('2018-12-16', 'College and Earning to Give'),
+  ('2018-12-14', 'Taking a Safety Report'),
+  ('2018-12-07', 'Taking Someone Aside'),
   ('2018-07-10', 'How to Parent More Predictably'),
   ('2018-07-03', 'Street Training'),
   ('2018-04-29', 'Soundproofing the Ceiling'),
