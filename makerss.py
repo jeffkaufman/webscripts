@@ -896,7 +896,8 @@ class Post:
   def html(self, is_amp):
     element = deepcopy(self.element)
 
-    element.insert(0, parse('<p>'))
+    for tt in element.findall('.//tt'):
+      tt.tag = 'code'
     
     if not self.published:
       element.insert(0, parse('<p><i>draft post</i></p>'))
