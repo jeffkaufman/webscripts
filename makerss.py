@@ -623,6 +623,11 @@ body {margin: 0}
   background: #eee;
   border-radius: 0.5em;
 }
+@media (max-width: 542px) {
+  .mobile-fullwidth {
+    margin-left: -8px;
+  }
+}
 @media (min-width: 550px) {
   .webring .articles {
     display: flex;
@@ -844,8 +849,9 @@ class Post:
         if not img.get('width'):
           img.set('width', str(width))
           img.set('height', str(height))
-          max_width = 95.0
-          img.set('style', 'max-width:%.1fvw; max-height:%.1fvw' %
+          max_width = 100.0
+          img.set('class', 'mobile-fullwidth')
+          img.set('style', 'max-width:%.1fvw; max-height:%.1fvw;' %
                   (max_width, max_width * height / width))
 
         if not img.get('srcset'):
