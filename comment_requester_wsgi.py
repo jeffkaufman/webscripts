@@ -160,7 +160,7 @@ class HnHtmlParser(HTMLParser):
         elif self.state == "need-comment" and tag == "i":
             self.current_text += " <i>"
         elif self.state == "need-comment" and tag == "a":
-            self.current_text += " "
+            self.current_text += ' <a href="%s">' % html.escape(self.get_attr(attrs, "href"), quote=True)
         elif self.state == "need-comment" and tag == "p":
             self.current_text += "<p>"
         elif self.state == "need-comment" and tag == "div":
@@ -184,7 +184,7 @@ class HnHtmlParser(HTMLParser):
         if self.state == "need-comment" and tag == "i":
             self.current_text += "</i> "
         elif self.state == "need-comment" and tag == "a":
-            self.current_text += " "
+            self.current_text += "</a> "
 
     def handle_data(self, data):
         if self.state == "need-user-name":
