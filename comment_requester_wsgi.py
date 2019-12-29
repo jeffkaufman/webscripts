@@ -2,15 +2,14 @@
 import cgi
 import traceback
 import re
-import urllib
-import urllib2
+import urllib.request, urllib.parse, urllib.error
 import math
 import json
 import os
 import sys
 import time
 import dateutil.parser
-import Cookie
+import http.cookies
 import subprocess
 import base64
 from xml.dom import minidom
@@ -45,8 +44,8 @@ def slurp(url, data=None, headers={}, timeout=60):
     if 'User-Agent' not in headers:
         headers['User-Agent'] = '%s bot by %s (www.jefftk.com)' % (botname, identifier)
 
-    response = urllib2.urlopen(urllib2.Request(url, data, headers), None, timeout)
-    return response.read()
+    response = urllib.request.urlopen(urllib.request.Request(url, data, headers), None, timeout)
+    return response.read().decode("utf-8")
 
 def die500(start_response, e):
     trb = "%s: %s\n\n%s" % (e.__class__.__name__, e, traceback.format_exc())
@@ -56,7 +55,7 @@ def die500(start_response, e):
     return trb
 
 def escape(s):
-    s = unicode(s)
+    s = str(s)
     for f,r in [["&", "&amp;"],
                 ["<", "&lt;"],
                 [">", "&gt;"]]:
@@ -66,7 +65,7 @@ def escape(s):
 
 def refresh_token_helper(refresh_token, client_id, client_secret):
     token_url = "https://accounts.google.com/o/oauth2/token"
-    post_body = urllib.urlencode({
+    post_body = urllib.parse.urlencode({
             "refresh_token": refresh_token,
             "client_id": client_id,
             "client_secret": client_secret,
@@ -161,7 +160,7 @@ def pull_hn_comments(url):
            username, link_suffix, time_ago, time_units = potential_user_info[0]
            break
       if not potential_user_info:
-        print previous_line
+        print(previous_line)
         raise Exception
 
     if in_comment:
@@ -275,7 +274,11 @@ def lw_style_service(token, service, domain):
     if not m:
         return []
 
-    response = json.loads(slurp("%s/graphql" % domain, data='{"query": "{comments(input: { terms: { view: \\"postCommentsOld\\", postId: \\"%s\\", }}) { results { _id postedAt author parentCommentId contents { html }}}}"}'%token, headers={'Content-Type': 'application/json'}))
+    post_body = '{"query": "{comments(input: { terms: { view: \\"postCommentsOld\\", postId: \\"%s\\", }}) { results { _id postedAt author parentCommentId contents { html }}}}"}' % token
+    response = json.loads(slurp(
+        "%s/graphql" % domain,
+        data=post_body.encode("utf-8"),
+        headers={'Content-Type': 'application/json'}))
 
     comments = {}
     for comment in response['data']['comments']['results']:
@@ -296,14 +299,14 @@ def lw_style_service(token, service, domain):
             [],
             comment["parentCommentId"]]
     root = []
-    for comment_id, comment in comments.items():
+    for comment_id, comment in list(comments.items()):
         parent_id = comment[-1]
         if parent_id:
             parent = comments[parent_id][-2]  # -2 is children
         else:
             parent = root
         parent.append(comment)
-    for comment in comments.values():
+    for comment in list(comments.values()):
         del comment[-1]  # remove temporary parent_id
     return root
 
@@ -500,7 +503,7 @@ def application(environ, start_response):
           raw = True
         else:
           start_response('200 OK', [('content-type', 'text/javascript')])
-    except Exception, e:
+    except Exception as e:
         output = die500(start_response, e)
 
     if not raw:
