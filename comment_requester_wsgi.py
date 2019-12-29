@@ -342,6 +342,8 @@ def cacher(cache_only, fn, service, arg):
     t = 0
     fn_value = []
     if value:
+        if type(value) == type(b''):
+            value = value.decode('utf-8')
         t, fn_value = json.loads(value)
 
     if cache_only:
