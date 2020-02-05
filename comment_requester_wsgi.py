@@ -2,20 +2,21 @@
 import cgi
 import traceback
 import re
-import urllib
-import urllib2
+import urllib.request, urllib.parse, urllib.error
 import math
 import json
 import os
 import sys
 import time
 import dateutil.parser
-import Cookie
+import http.cookies
 import subprocess
 import base64
 from xml.dom import minidom
 from collections import defaultdict
 import socket
+import html
+from html.parser import HTMLParser
 
 sys.path.append(os.path.dirname(__file__))
 from private import *
@@ -45,8 +46,8 @@ def slurp(url, data=None, headers={}, timeout=60):
     if 'User-Agent' not in headers:
         headers['User-Agent'] = '%s bot by %s (www.jefftk.com)' % (botname, identifier)
 
-    response = urllib2.urlopen(urllib2.Request(url, data, headers), None, timeout)
-    return response.read()
+    response = urllib.request.urlopen(urllib.request.Request(url, data, headers), None, timeout)
+    return response.read().decode("utf-8")
 
 def die500(start_response, e):
     trb = "%s: %s\n\n%s" % (e.__class__.__name__, e, traceback.format_exc())
@@ -56,7 +57,7 @@ def die500(start_response, e):
     return trb
 
 def escape(s):
-    s = unicode(s)
+    s = str(s)
     for f,r in [["&", "&amp;"],
                 ["<", "&lt;"],
                 [">", "&gt;"]]:
@@ -66,7 +67,7 @@ def escape(s):
 
 def refresh_token_helper(refresh_token, client_id, client_secret):
     token_url = "https://accounts.google.com/o/oauth2/token"
-    post_body = urllib.urlencode({
+    post_body = urllib.parse.urlencode({
             "refresh_token": refresh_token,
             "client_id": client_id,
             "client_secret": client_secret,
@@ -121,73 +122,101 @@ def pull_reddit_style_json(url):
     return [parse_reddit_style_json_comment(raw_comment, url)
             for raw_comment in raw_comments]
 
-BEGIN_HN_COMMENT='<span class="comment">'
-END_HN_COMMENT="</span>"
+
+class HnHtmlParser(HTMLParser):
+    def __init__(self):
+        HTMLParser.__init__(self)
+        self.state = "initial"
+        self.comments = []
+        self.current_text = []
+
+    def get_attr(self, attrs, key):
+        for k, v in attrs:
+            if k == key:
+                return v
+        return None
+
+    def has_class(self, attrs, cls):
+        value = self.get_attr(attrs, "class")
+        return value and cls in value
+
+    def handle_starttag(self, tag, attrs):
+        if self.state == "initial" and tag == "table" and self.has_class(attrs, "comment-tree"):
+            self.state = "comments"
+        elif self.state == "comments" and tag == "tr" and self.has_class(attrs, "comtr"):
+            self.current_id = self.get_attr(attrs, "id")
+            self.state = "need-indent"
+        elif self.state == "need-indent" and tag == "img":
+            self.current_indent = self.get_attr(attrs, "width")
+            self.state = "need-user"
+        elif self.state == "need-user" and tag == "a" and self.has_class(attrs, "hnuser"):
+            self.current_user_link = self.get_attr(attrs, "href")
+            self.state = "need-user-name"
+        elif self.state == "need-age-a" and tag == "a":
+            self.state = "need-age-text"
+        elif self.state == "need-comment-div" and tag == "div" and self.has_class(attrs, "comment"):
+            self.state = "need-comment"
+            self.current_text = ""
+        elif self.state == "need-comment" and tag == "i":
+            self.current_text += " <i>"
+        elif self.state == "need-comment" and tag == "a":
+            self.current_text += ' <a href="%s">' % html.escape(self.get_attr(attrs, "href"), quote=True)
+        elif self.state == "need-comment" and tag == "p":
+            self.current_text += "<p>"
+        elif self.state == "need-comment" and tag == "div":
+            self.current_indent = int(self.current_indent)
+            if self.current_indent % 40 != 0:
+                raise RuntimeException("bad hn indent: %s" % self.current_indent)
+
+            self.current_indent = self.current_indent // 40
+
+            self.comments.append((self.current_indent,
+                                  self.current_id,
+                                  self.current_user_link,
+                                  self.current_user_name,
+                                  self.current_age,
+                                  self.current_text))
+            self.current_text = ""
+            self.state = "comments"
+
+
+    def handle_endtag(self, tag):
+        if self.state == "need-comment" and tag == "i":
+            self.current_text += "</i> "
+        elif self.state == "need-comment" and tag == "a":
+            self.current_text += "</a> "
+
+    def handle_data(self, data):
+        if self.state == "need-user-name":
+            self.current_user_name = data
+            self.state = "need-age-a"
+        elif self.state == "need-age-text":
+            self.current_age = data
+            self.state = "need-comment-div"
+        elif self.state == "need-comment":
+            data = data.strip()
+            if data:
+                self.current_text += html.escape(data, quote=True)
+
 def pull_hn_comments(url):
-  html = slurp(url).split("\n")
-
-  comments = []
-
-  current_indent = 0
-  comment_so_far = []
-  in_comment = False
-  prevous_line = ""
-  for line in html:
-    line = line.strip().replace("</span></div><br>", "")
-
-    indentations = re.findall(
-        '<img src="s.gif" height="1" width="([0-9]+)">', line)
-    if indentations:
-        indentation = indentations[-1]
-
-    if line.startswith(BEGIN_HN_COMMENT):
-      assert not in_comment
-      in_comment = True
-      line = line.replace(BEGIN_HN_COMMENT, "")
-
-      if indentation is not None:
-        current_indent = int(indentation)
-
-        assert current_indent % 40 == 0
-        current_indent = current_indent / 40
-      else:
-        current_indent = 0
-
-      potential_user_info = []
-      for a_matcher in ["([^<]*)", "<font[^>]*>([^<]*)</font>"]:
-        potential_user_info = re.findall(
-          '<a href="[^"]*">%s</a> <a href="([^"]*)">([\\d]*) (year|day|hour|minute|second)s? ago</a>' % a_matcher, previous_line)
-        if potential_user_info:
-           username, link_suffix, time_ago, time_units = potential_user_info[0]
-           break
-      if not potential_user_info:
-        print previous_line
-        raise Exception
-
-    if in_comment:
-      if END_HN_COMMENT not in line:
-        comment_so_far.append(line)
-      else:
-        in_comment = False
-        comment_so_far.append(line.split(END_HN_COMMENT)[0])
-
-        comments.append((current_indent, "\n".join(comment_so_far), username, time_ago, time_units, link_suffix))
-        comment_so_far = []
-    previous_line = line
+  parser = HnHtmlParser()
+  parser.feed(slurp(url))
 
   threaded_comments = []
-  for indent, comment, username, time_ago, time_units, link_suffix in comments:
-    append_to = threaded_comments
-    for i in range(indent):
-      # find the last comment in the list, prepare to append to its comment section
-      append_to = append_to[-1][-1]
-    append_to.append([
-        username,
-        "https://news.ycombinator.com/%s" % link_suffix,
-        link_suffix.split("=")[-1],
-        comment,
-        timedelta_to_epoch(int(time_ago), time_units),
-        []])
+  for indent, current_id, user_link, user_name, age, text in parser.comments:
+      (time_ago, time_units), = re.findall("^([\\d]*) (year|day|hour|minute|second)s? ago$", age)
+
+      append_to = threaded_comments
+      for i in range(indent):
+          # find the last comment in the list, prepare to append to its comment section
+          append_to = append_to[-1][-1]
+      append_to.append([
+          user_name,
+          "https://news.ycombinator.com/item?id=%s" % current_id,
+          "hn-%s" % current_id,
+          text,
+          timedelta_to_epoch(int(time_ago), time_units),
+          []])
   return threaded_comments
 
 def timedelta_to_epoch(time_ago, time_units):
@@ -270,12 +299,16 @@ def pull_reddit_style_rss(url):
 def lw_style_service(token, service, domain):
     if token.startswith('posts/'):
         token = token[len('posts/'):]
-    
+
     m = re.match('^[a-zA-Z0-9]+$', token)
     if not m:
         return []
 
-    response = json.loads(slurp("%s/graphql" % domain, data='{"query": "{comments(input: { terms: { view: \\"postCommentsOld\\", postId: \\"%s\\", }}) { results { _id postedAt author parentCommentId contents { html }}}}"}'%token, headers={'Content-Type': 'application/json'}))
+    post_body = '{"query": "{comments(input: { terms: { view: \\"postCommentsOld\\", postId: \\"%s\\", }}) { results { _id postedAt author parentCommentId contents { html }}}}"}' % token
+    response = json.loads(slurp(
+        "%s/graphql" % domain,
+        data=post_body.encode("utf-8"),
+        headers={'Content-Type': 'application/json'}))
 
     comments = {}
     for comment in response['data']['comments']['results']:
@@ -296,14 +329,14 @@ def lw_style_service(token, service, domain):
             [],
             comment["parentCommentId"]]
     root = []
-    for comment_id, comment in comments.items():
+    for comment_id, comment in list(comments.items()):
         parent_id = comment[-1]
         if parent_id:
             parent = comments[parent_id][-2]  # -2 is children
         else:
             parent = root
         parent.append(comment)
-    for comment in comments.values():
+    for comment in list(comments.values()):
         del comment[-1]  # remove temporary parent_id
     return root
 
@@ -339,6 +372,8 @@ def cacher(cache_only, fn, service, arg):
     t = 0
     fn_value = []
     if value:
+        if type(value) == type(b''):
+            value = value.decode('utf-8')
         t, fn_value = json.loads(value)
 
     if cache_only:
@@ -500,7 +535,7 @@ def application(environ, start_response):
           raw = True
         else:
           start_response('200 OK', [('content-type', 'text/javascript')])
-    except Exception, e:
+    except Exception as e:
         output = die500(start_response, e)
 
     if not raw:
