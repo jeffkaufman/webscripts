@@ -1030,6 +1030,7 @@ class Post:
       head.append(parse('''\
 <script>
   googletag.cmd.push(function() {
+      googletag.pubads().setForceSafeFrame(true);
       var sizes = [[300, 250]];
       if (window.innerWidth > 550) {
         // desktop
