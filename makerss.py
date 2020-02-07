@@ -198,10 +198,10 @@ SNIPPETS = {
   'meta_viewport': 'width=device-width,minimum-scale=1,initial-scale=1',
 
   'google_analytics': r'''
-<script>
+<script nonce="{{NONCE}}">
   (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
   (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  m=s.getElementsByTagName(o)[0];a.async=1;a.nonce='{{NONCE}}';a.src=g;m.parentNode.insertBefore(a,m)
   })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
 
   ga('create', 'UA-27645543-1', 'auto');
@@ -210,10 +210,10 @@ SNIPPETS = {
 ''',
 
   'google_analytics_nonamp': r'''
-<script>
+<script nonce="{{NONCE}}">
   (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
   (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  m=s.getElementsByTagName(o)[0];a.async=1;a.nonce='{{NONCE}}';a.src=g;m.parentNode.insertBefore(a,m)
   })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
 
   ga('create', 'UA-27645543-1', 'auto');
@@ -245,7 +245,7 @@ SNIPPETS = {
 </script>
 </amp-analytics>''',
 
-  'comment_script': r'''<script type="text/javascript">
+  'comment_script': r'''<script nonce="{{NONCE}}" type="text/javascript">
 var last_visit = document.cookie.replace(/(?:(?:^|.*;\s*)jtk_last_visit\s*\=\s*([^;]*).*$)|^.*$/, "$1");
 var current_time = new Date().getTime();
 var one_year_gmt_str = new Date(current_time + 31536000000).toGMTString();
@@ -1017,18 +1017,18 @@ class Post:
 
     if is_amp:
       head.append(parse('''\
-<script async custom-element="amp-ad"
+<script nonce="{{NONCE}}" async custom-element="amp-ad"
    src="https://cdn.ampproject.org/v0/amp-ad-0.1.js"></script>'''))
     else:
       head.append(parse('''\
-<script async='async' src='https://www.googletagservices.com/tag/js/gpt.js'></script>'''))
+<script nonce="{{NONCE}}" async='async' src='https://www.googletagservices.com/tag/js/gpt.js'></script>'''))
       head.append(parse('''\
-<script>
+<script nonce="{{NONCE}}">
   var googletag = googletag || {};
   googletag.cmd = googletag.cmd || [];
 </script>'''))
       head.append(parse('''\
-<script>
+<script nonce="{{NONCE}}">
   googletag.cmd.push(function() {
       googletag.pubads().setForceSafeFrame(true);
       var sizes = [[300, 250]];
@@ -1156,7 +1156,7 @@ class Post:
         content.append(parse('''\
 <div id="comments">
 %s
-<script type="text/javascript">
+<script nonce="{{NONCE}}" type="text/javascript">
 %s
 </script>
 </div>''' % (
@@ -1195,7 +1195,7 @@ class Post:
       wrapper.append(parse('''\
 <div id="ad-wrapper">
 <div id='div-gpt-ad-1524882696974-0'>
-  <script>
+  <script nonce="{{NONCE}}">
     googletag.cmd.push(function() { googletag.display('div-gpt-ad-1524882696974-0'); });
   </script>
 </div>
