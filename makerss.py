@@ -766,8 +766,11 @@ class Post:
     self.date = date
     self.title = title
     self.published = config.notyet_token not in tags
-    self.yeslw = config.nolw_token not in tags
-    tags = [x for x in tags if x != config.notyet_token and x != self.nolw_token]
+    yeslw = config.nolw_token not in tags
+    tags = [x for x in tags
+            if x != config.notyet_token and x != config.nolw_token]
+    if yeslw:
+      tags.append("lwfeed")
     self.name = title_to_url_component(title)
     self.element = element
     self.openring = openring
@@ -1088,7 +1091,8 @@ class Post:
       tag_block = '<span>%s</span>&nbsp;&nbsp;<small><tt>%s</tt></small>' % (
         ', '.join(
           '<i><a href="/news/%s">%s</a></i>' % (tag, tag)
-          for tag in self.tags),
+          for tag in self.tags
+          if tag != "lwfeed"),
         '[amp]' if is_amp else '[html]')
 
     content.append(parse('''<table id="title-date-tags">
@@ -1445,8 +1449,6 @@ def start():
         front_page_list.append(post.blog_entry_summary())
 
       tags = set(['all']).union(post.tags)
-      if post.yeslw:
-        tags.add("lwfeed")
       for tag in tags:
         tag_to_posts[tag].append(post)
 
