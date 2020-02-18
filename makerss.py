@@ -68,6 +68,7 @@ class Configuration:
     self.break_token = '~~break~~'
 
     self.notyet_token = 'notyet'
+    self.nolw_token = 'nolw'
 
     self.max_update_chars = 500
 
@@ -749,7 +750,8 @@ class Post:
     self.date = date
     self.title = title
     self.published = config.notyet_token not in tags
-    tags = [x for x in tags if x != config.notyet_token]
+    self.yeslw = config.nolw_token not in tags
+    tags = [x for x in tags if x != config.notyet_token and x != self.nolw_token]
     self.name = title_to_url_component(title)
     self.element = element
     self.openring = openring
@@ -1422,6 +1424,8 @@ def start():
         front_page_list.append(post.blog_entry_summary())
 
       tags = set(['all']).union(post.tags)
+      if post.yeslw:
+        tags.add("lwfeed")
       for tag in tags:
         tag_to_posts[tag].append(post)
 
