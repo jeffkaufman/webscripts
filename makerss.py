@@ -1036,16 +1036,10 @@ class Post:
 <script nonce="{{NONCE}}">
   googletag.cmd.push(function() {
       googletag.pubads().setForceSafeFrame(true);
-      var sizes = [[300, 250]];
-      if (window.innerWidth > 550) {
-        // desktop
-        sizes.push([550, 250]);
-      } else {
-        var useWidth = window.innerWidth - 8 - 8;
-        sizes.push([useWidth, 250]);
-        sizes.push([useWidth, Math.round(useWidth / 300 * 250)]);
-      }
-      googletag.defineSlot('/21707489405/post_bottom_square', sizes, 'div-gpt-ad-1524882696974-0').addService(googletag.pubads());
+      googletag.defineSlot('/21707489405/post_bottom_square', {
+         'fixed': [300, 250],
+         'max': [Math.min(550, window.innerWidth - 16), 400],
+      }, 'div-gpt-ad-1524882696974-0').addService(googletag.pubads());
   googletag.pubads().enableSingleRequest();
   googletag.enableServices();
 });
