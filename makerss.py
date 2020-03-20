@@ -548,9 +548,10 @@ function pullComments(wsgiUrl, serviceName) {
   'rss_footer': '\n</channel>\n</rss>',
 
   'css': '''\
-.comment-thread {margin: 0px 0px 0px 30px;}
+.comment-thread {margin: 0 0 0 0.5em}
 .content {max-width:550px;}
 .comment {max-width: 448px;
+          min-width: 10em;
           overflow: hidden;
           overflow-wrap: break-word;
           margin-top: 0px;
