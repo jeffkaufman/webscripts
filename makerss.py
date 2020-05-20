@@ -566,12 +566,33 @@ function pullComments(wsgiUrl, serviceName) {
               visibility: hidden;}
 .comment:hover .commentlink {visibility: visible}
 .highlighted {background-color: lightyellow;}
+#top-posts ul  {
+  padding-left: 0;
+  list-style: none;
+}
+#ad-wrapper {
+  max-width: 550px;
+}
 @media (min-width: 850px) {
-  #top-posts { padding-left: 30px;
-               position: absolute;
-               top: 30px;
-               left: 600px;
-               max-width: 200px;}}
+  #top-posts {
+    padding-left: 30px;
+    position: absolute;
+    top: 30px;
+    right: 30px;
+    max-width: 200px;
+  }
+}
+@media (min-width: 1030px) {
+  .content, .webring {
+    width: 550px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  #ad-wrapper {
+    max-width: 100vw;
+  }
+}
+
 #title-date-tags { width: 100% }
 #wrapper { margin: 8px}
 body {margin: 0}
@@ -608,9 +629,6 @@ body {margin: 0}
   padding-top: 1em;
   padding-bottom: 1em;
   text-align: center;
-}
-#ad-wrapper {
-  max-width: 550px;
 }
 .webring {
   max-width: 550px;
@@ -1037,9 +1055,13 @@ class Post:
 <script nonce="{{NONCE}}">
   googletag.cmd.push(function() {
       googletag.pubads().setForceSafeFrame(true);
+      var maxAdWidth = 550;
+      if (window.innerWidth >= 1030 || window.innerWidth < 850) {
+        maxAdWidth =  window.innerWidth - 16;
+      }
       googletag.defineSlot('/21707489405/post_bottom_square', {
          'fixed': [300, 250],
-         'max': [Math.min(550, window.innerWidth - 16), 400],
+         'max': [maxAdWidth, 400],
       }, 'div-gpt-ad-1524882696974-0').addService(googletag.pubads());
   googletag.pubads().enableSingleRequest();
   googletag.enableServices();
@@ -1206,7 +1228,7 @@ class Post:
     best_posts = [self.posts_by_slug[slug]
                   for slug, _ in random.sample(BEST_POSTS, 5)]
 
-    best_posts_html = '<p>More Posts:</p><ul>%s</ul>' % (
+    best_posts_html = '<p><b>More Posts</b></p><ul>%s</ul>' % (
       ''.join('<li><p><a href="%s">%s</a></p></li>' % (
         config.relative_url(other.link()),
         other.title) for other in best_posts))
@@ -1489,7 +1511,15 @@ def start():
 <style>
 .headfoot { margin: 3px }
 h2 { margin: .5em }
-      body { margin: 0; padding: 0; max-width: 35em;}
+body {
+   margin: 0;
+   padding: 0;
+}
+#content {
+  max-width: 550px;
+  margin-left: auto;
+  margin-right: auto;
+}
 li { list-style-type: none; margin: 0 }
 li a { display: block; padding: .75em }
 li a:link { text-decoration: none }
@@ -1500,10 +1530,13 @@ li:nth-child(odd) {
 }
 .date { font-size: 85%% ; color: black }
 </style>
-%s<hr><h2>Posts :: %s (<a href="%s">rss</a>)</h2>
+%s<hr>
+<div id=content>
+<h2>Posts :: %s (<a href="%s">rss</a>)</h2>
 <ul>
 %s
 </ul>
+</div>
 <hr>%s
 </body>
 </html>''' % (
