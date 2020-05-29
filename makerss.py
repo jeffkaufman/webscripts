@@ -676,6 +676,16 @@ body {margin: 0}
 pre {
   overflow-x: scroll;
 }
+.headfoot ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+.headfoot li {
+  display: inline;
+  margin-left: 5px;
+  margin-right: 5px;
+}
 ''',
 
   'amp_boilerplate': '<style amp-boilerplate="">body{-webkit-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-moz-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-ms-animation:-amp-start 8s steps(1,end) 0s 1 normal both;animation:-amp-start 8s steps(1,end) 0s 1 normal both}@-webkit-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-moz-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-ms-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-o-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}</style>',
@@ -1409,16 +1419,15 @@ def parsePosts():
   return posts
 
 def links_partial():
-  sep = '&#160;&#160;::&#160;&#160;'
-  s = sep.join(
-    ('<a href="/" rel="author">Jeff Kaufman</a>',
-     '<a href="/p/index">Posts</a>',
-     '<a href="/news.rss">RSS</a>',
-     # can't use rewind symbol because apple makes it ugly
-     '<span><a href="__REVERSE_RSS__">&#9666;&#9666;RSS</a>',
-     '</span><a href="/contact">Contact</a>'))
-  s += '\n'
-  return '<div class="headfoot">%s</div>' % s
+  return '''
+<div class="headfoot">
+  <li><a href="/" rel="author">Jeff Kaufman</a></li>
+  <li><a href="/p/index">Posts</a></li>
+  <li><a href="/news.rss">RSS</a></li>
+  <li><a href="__REVERSE_RSS__">&#9666;&#9666;RSS</a></li>
+  <li><a href="/contact">Contact</a></li>
+</div>
+'''
 
 def delete_old_staging():
   for modifier in [config.new, config.prev]:
@@ -1509,7 +1518,6 @@ def start():
 </head>
 <body>
 <style>
-.headfoot { margin: 3px }
 h2 { margin: .5em }
 body {
    margin: 0;
@@ -1520,15 +1528,26 @@ body {
   margin-left: auto;
   margin-right: auto;
 }
-li { list-style-type: none; margin: 0 }
-li a { display: block; padding: .75em }
-li a:link { text-decoration: none }
+#content li { list-style-type: none; margin: 0 }
+#content li a { display: block; padding: .75em }
+#content li a:link { text-decoration: none }
 .title:hover { text-decoration: underline }
-ul { margin: 0; padding: 0 }
-li:nth-child(odd) {
+#content ul { margin: 0; padding: 0 }
+#content li:nth-child(odd) {
   background: #EEE;
 }
 .date { font-size: 85%% ; color: black }
+.headfoot { margin: 3px }
+.headfoot ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+.headfoot li {
+  display: inline;
+  margin-left: 5px;
+  margin-right: 5px;
+}
 </style>
 %s<hr>
 <div id=content>
