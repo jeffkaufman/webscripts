@@ -36,7 +36,7 @@ def post_slug(post):
     try:
         slug, = re.findall("<link>.*/p/([^<]+)</link>", post)
     except Exception:
-        print repr(post)
+        print(repr(post))
         raise
     return slug
 
