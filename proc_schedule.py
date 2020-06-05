@@ -374,11 +374,11 @@ def in_past(date, parsed_time):
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print "Expected opcode.  Allowed:"
-        print "  rewrite"
-        print "  add"
-        print "  view"
-        print "  out"
+        print("Expected opcode.  Allowed:")
+        print("  rewrite")
+        print("  add")
+        print("  view")
+        print("  out")
         
     elif sys.argv[1] == "out":
         write_ical()
@@ -396,11 +396,11 @@ if __name__ == "__main__":
     elif sys.argv[1] == "add":
         if len(sys.argv) == 2:
             table_entry = make_table_entry(
-                raw_input("month: "),
-                raw_input("day_num: "),
-                raw_input("activity: "),
-                raw_input("time: "),
-                raw_input("location: "))
+                eval(input("month: ")),
+                eval(input("day_num: ")),
+                eval(input("activity: ")),
+                eval(input("time: ")),
+                eval(input("location: ")))
         else:
             table_entry = make_table_entry(*sys.argv[2:])
         a,b,c = read_index(FUTURE_FNAME)
@@ -408,23 +408,23 @@ if __name__ == "__main__":
 
         t = add_to_table(table_entry, t)
 
-        print
-        print "The day %s looks like:" % pretty_date(table_entry[0],yearfirst=False)
-        print tidy_view([te for te in t if te[0] == table_entry[0]],
-                         ind=3, nodate=True)
+        print()
+        print(("The day %s looks like:" % pretty_date(table_entry[0],yearfirst=False)))
+        print((tidy_view([te for te in t if te[0] == table_entry[0]],
+                         ind=3, nodate=True)))
         write_index(a,unparse_table(t),c,FUTURE_FNAME)
         write_ical()
-        print "... saved"
+        print("... saved")
     elif sys.argv[1] == "view":
         a,b,c = read_index(FUTURE_FNAME)
         t=parse_table(b)
         
         if len(sys.argv) == 3:
             y,m,d=sys.argv[2].split('-')
-            print "The day %s/%s/%s looks like:" % (m,d,y)
-            print tidy_view([te for te in t if te[0].year == int(y) and te[0].day == int(d) and te[0].month == int(m)],
-                            ind=3, nodate=True)
+            print(("The day %s/%s/%s looks like:" % (m,d,y)))
+            print((tidy_view([te for te in t if te[0].year == int(y) and te[0].day == int(d) and te[0].month == int(m)],
+                            ind=3, nodate=True)))
         else:
-            print tidy_view(parse_table(b))
+            print((tidy_view(parse_table(b))))
     else:
-        print "Args not understood: %s" % (" ".join(sys.argv[1:]))
+        print(("Args not understood: %s" % (" ".join(sys.argv[1:]))))
