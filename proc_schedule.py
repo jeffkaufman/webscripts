@@ -396,11 +396,11 @@ if __name__ == "__main__":
     elif sys.argv[1] == "add":
         if len(sys.argv) == 2:
             table_entry = make_table_entry(
-                eval(input("month: ")),
-                eval(input("day_num: ")),
-                eval(input("activity: ")),
-                eval(input("time: ")),
-                eval(input("location: ")))
+                input("month: "),
+                input("day_num: "),
+                input("activity: "),
+                input("time: "),
+                input("location: "))
         else:
             table_entry = make_table_entry(*sys.argv[2:])
         a,b,c = read_index(FUTURE_FNAME)
