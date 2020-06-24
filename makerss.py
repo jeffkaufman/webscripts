@@ -256,10 +256,15 @@ window.addEventListener("load", () => {
 
   var waitingForLoad = false;
   var nextPreview = null;
+  var currentPreview = null;
   var nextPreviewY = null;
+  var currentPreviewY = null;
 
   function hoverInnerLink(e) {
     if (window.innerWidth < 1000) {
+      return;
+    }
+    if (currentPreview == e.target.href) {
       return;
     }
     nextPreview = e.target.href;
@@ -286,9 +291,13 @@ window.addEventListener("load", () => {
     };
 
     // whichever is lower of (a) the link or (b) the bottom of top-posts
-    preview.style.top = Math.max(
+    var newPreviewY = Math.max(
       document.getElementById("top-posts").getBoundingClientRect().bottom,
-      nextPreviewY) + "px";
+      nextPreviewY);
+    if (currentPreviewY && Math.abs(newPreviewY - currentPreviewY) < 30) {
+      newPreviewY = currentPreviewY;
+    }
+    preview.style.top = newPreviewY + "px";
 
     pifr.addEventListener("load", () => {
       pifr.contentWindow.addEventListener("click", function() {
@@ -298,7 +307,9 @@ window.addEventListener("load", () => {
     });
     pifr.src = iframeTarget;
 
+    currentPreview = nextPreview;
     nextPreview = null;
+    currentPreviewY = newPreviewY;
     nextPreviewY = null;
   }
 });
