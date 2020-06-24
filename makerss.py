@@ -764,7 +764,11 @@ pre {
   position: absolute;
   right: 30px;
 }
+#preview button {
+  display: none;
+}
 #preview-iframe {
+  display: none;
   margin: 0;
   padding: 0;
   width: max(min(550px, calc((100vw - 550px)/2 - 100px)), 350px);
@@ -1334,7 +1338,8 @@ class Post:
 
     if not is_amp:
       wrapper.append(parse(
-        '<div id=preview><iframe id=preview-iframe scrolling=no></iframe>'
+        '<div id=preview><iframe id=preview-iframe scrolling=no
+             sandbox="allow-same-origin"></iframe>'
         '<button id=preview-open>open</button></div>'))
     
     wrapper.append(etree.Element('hr'))
