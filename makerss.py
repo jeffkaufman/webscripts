@@ -1338,8 +1338,8 @@ class Post:
 
     if not is_amp:
       wrapper.append(parse(
-        '<div id=preview><iframe id=preview-iframe scrolling=no
-             sandbox="allow-same-origin"></iframe>'
+        '<div id=preview><iframe id=preview-iframe scrolling=no '
+        'sandbox="allow-same-origin"></iframe>'
         '<button id=preview-open>open</button></div>'))
     
     wrapper.append(etree.Element('hr'))
