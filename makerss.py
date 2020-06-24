@@ -305,7 +305,9 @@ window.addEventListener("load", () => {
       });
       loadPreview();
     });
-    pifr.src = iframeTarget;
+
+    // https://stackoverflow.com/questions/5259154/firefox-back-button-vs-iframes
+    pifr.contentWindow.location.replace(iframeTarget);
 
     currentPreview = nextPreview;
     nextPreview = null;
