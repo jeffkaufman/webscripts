@@ -246,6 +246,40 @@ SNIPPETS = {
 </script>
 </amp-analytics>''',
 
+  'hover_preview': r'''<script nonce="{{NONCE}}" type="text/javascript">
+window.addEventListener("load", () => {
+  var pifr = document.getElementById("preview-iframe");
+  document.querySelectorAll("a[href^='/p/']").forEach(a => {
+    a.addEventListener("mouseover", hoverInnerLink);
+  });
+
+  function hoverInnerLink(e) {
+    if (window.innerWidth < 1000) {
+      return;
+    }
+    var preview = document.getElementById("preview");
+    pifr.style.display = "block";
+    var open = document.getElementById("preview-open");
+    open.style.display = "block";
+    open.onclick = function() {
+      window.top.location = e.target.href;
+    };
+
+    // whichever is lower of (a) the link or (b) the bottom of top-posts
+    preview.style.top = Math.max(
+      document.getElementById("top-posts").getBoundingClientRect().bottom,
+      e.pageY) + "px";
+
+    pifr.addEventListener("load", () => {
+      pifr.contentWindow.addEventListener("click", function() {
+        window.top.location = e.target.href;
+      });
+    });
+    pifr.src = e.target.href;
+  }
+});
+</script>''',
+  
   'comment_script': r'''<script nonce="{{NONCE}}" type="text/javascript">
 var last_visit = document.cookie.replace(/(?:(?:^|.*;\s*)jtk_last_visit\s*\=\s*([^;]*).*$)|^.*$/, "$1");
 var current_time = new Date().getTime();
@@ -573,16 +607,16 @@ function pullComments(wsgiUrl, serviceName) {
 #ad-wrapper {
   max-width: 550px;
 }
-@media (min-width: 850px) {
+@media (min-width: 1000px) {
   #top-posts {
     padding-left: 30px;
     position: absolute;
     top: 30px;
     right: 30px;
-    max-width: 200px;
+    width: 350px;
   }
 }
-@media (min-width: 1030px) {
+@media (min-width: 1450px) {
   .content, .webring {
     width: 550px;
     margin-left: auto;
@@ -685,6 +719,21 @@ pre {
   display: inline;
   margin-left: 5px;
   margin-right: 5px;
+}
+@media (max-width: 1000px) {
+  #preview {
+    display: none;
+  }
+}
+#preview {
+  position: absolute;
+  right: 30px;
+}
+#preview-iframe {
+  margin: 0;
+  padding: 0;
+  width: max(min(550px, calc((100vw - 550px)/2 - 100px)), 350px);
+  height: 50vh;
 }
 ''',
 
@@ -1090,7 +1139,9 @@ class Post:
     else:
       head.append(parse(SNIPPETS['google_analytics_nonamp']))
 
-
+    if not is_amp:
+      head.append(parse(SNIPPETS['hover_preview']))      
+      
     # TODO: look into ld json schema for amp
 
     if is_amp:
@@ -1246,6 +1297,10 @@ class Post:
     wrapper.append(parse(
       '<div id="top-posts">%s</div>' % best_posts_html))
 
+    wrapper.append(parse(
+      '<div id=preview><iframe id=preview-iframe scrolling=no></iframe>'
+      '<button id=preview-open>open</button></div>'))
+    
     wrapper.append(etree.Element('hr'))
     wrapper.append(parse(links_partial()))
 
