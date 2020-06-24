@@ -253,29 +253,53 @@ window.addEventListener("load", () => {
     a.addEventListener("mouseover", hoverInnerLink);
   });
 
+
+  var waitingForLoad = false;
+  var nextPreview = null;
+  var nextPreviewY = null;
+
   function hoverInnerLink(e) {
     if (window.innerWidth < 1000) {
       return;
     }
+    nextPreview = e.target.href;
+    nextPreviewY = e.pageY;
+    if (waitingForLoad) {
+      return;
+    }
+    loadPreview();
+  }
+
+  function loadPreview() {
+    if (!nextPreview) {
+      return;
+    }
+
+    var iframeTarget = nextPreview;
+
     var preview = document.getElementById("preview");
     pifr.style.display = "block";
     var open = document.getElementById("preview-open");
     open.style.display = "block";
     open.onclick = function() {
-      window.top.location = e.target.href;
+      window.top.location = iframeTarget;
     };
 
     // whichever is lower of (a) the link or (b) the bottom of top-posts
     preview.style.top = Math.max(
       document.getElementById("top-posts").getBoundingClientRect().bottom,
-      e.pageY) + "px";
+      nextPreviewY) + "px";
 
     pifr.addEventListener("load", () => {
       pifr.contentWindow.addEventListener("click", function() {
-        window.top.location = e.target.href;
+        window.top.location = iframeTarget;
       });
+      loadPreview();
     });
-    pifr.src = e.target.href;
+    pifr.src = iframeTarget;
+
+    nextPreview = null;
+    nextPreviewY = null;
   }
 });
 </script>''',
@@ -1297,9 +1321,10 @@ class Post:
     wrapper.append(parse(
       '<div id="top-posts">%s</div>' % best_posts_html))
 
-    wrapper.append(parse(
-      '<div id=preview><iframe id=preview-iframe scrolling=no></iframe>'
-      '<button id=preview-open>open</button></div>'))
+    if not is_amp:
+      wrapper.append(parse(
+        '<div id=preview><iframe id=preview-iframe scrolling=no></iframe>'
+        '<button id=preview-open>open</button></div>'))
     
     wrapper.append(etree.Element('hr'))
     wrapper.append(parse(links_partial()))
