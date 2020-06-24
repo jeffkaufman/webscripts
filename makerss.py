@@ -1148,7 +1148,7 @@ class Post:
       head.append(parse('''\
 <script nonce="{{NONCE}}">
   googletag.cmd.push(function() {
-      googletag.pubads().setForceSafeFrame(true);
+      googletag.pubads().setForceSafeFrame(true).setSafeFrameConfig({useUniqueDomain: true});
       var maxAdWidth = 550;
       if (window.innerWidth >= 1030 || window.innerWidth < 850) {
         maxAdWidth =  window.innerWidth - 16;
