@@ -247,7 +247,7 @@ SNIPPETS = {
 </amp-analytics>''',
 
   'hover_preview': r'''<script nonce="{{NONCE}}" type="text/javascript">
-window.addEventListener("load", () => {
+  window.addEventListener("load", () => {
   var pifr = document.getElementById("preview-iframe");
   document.querySelectorAll("a[href^='/p/']").forEach(a => {
     a.addEventListener("mouseover", hoverInnerLink);
@@ -268,7 +268,8 @@ window.addEventListener("load", () => {
       return;
     }
     nextPreview = e.target.href;
-    nextPreviewY = e.pageY;
+    nextPreviewPageY = e.pageY;
+    nextPreviewClientY = e.clientY;
     if (waitingForLoad) {
       return;
     }
@@ -290,14 +291,26 @@ window.addEventListener("load", () => {
       window.top.location = iframeTarget;
     };
 
-    // whichever is lower of (a) the link or (b) the bottom of top-posts
-    var newPreviewY = Math.max(
-      document.getElementById("top-posts").getBoundingClientRect().bottom,
-      nextPreviewY);
+    // amount of padding needed to put the preview at mouse location
+    var newPreviewY = nextPreviewPageY
+        - document.getElementById("top-posts").getBoundingClientRect().height
+        - 38;
+
+    var approxPreviewHeight = window.innerHeight/2 + 100;
+
+    if (nextPreviewClientY > window.innerHeight - approxPreviewHeight) {
+      newPreviewY -= (nextPreviewClientY - (
+          window.innerHeight - approxPreviewHeight));
+    }
+
+    if (newPreviewY < 0) {
+      newPreviewY = 0;
+    }
+
     if (currentPreviewY && Math.abs(newPreviewY - currentPreviewY) < 30) {
       newPreviewY = currentPreviewY;
     }
-    preview.style.top = newPreviewY + "px";
+    preview.style.marginTop = newPreviewY + "px";
 
     pifr.addEventListener("load", () => {
       pifr.contentWindow.addEventListener("click", function() {
@@ -312,10 +325,10 @@ window.addEventListener("load", () => {
     currentPreview = nextPreview;
     nextPreview = null;
     currentPreviewY = newPreviewY;
-    nextPreviewY = null;
+    nextPreviewPageY = null;
+    nextPreviewClientY = null;
   }
-});
-</script>''',
+});</script>''',
   
   'comment_script': r'''<script nonce="{{NONCE}}" type="text/javascript">
 var last_visit = document.cookie.replace(/(?:(?:^|.*;\s*)jtk_last_visit\s*\=\s*([^;]*).*$)|^.*$/, "$1");
@@ -645,15 +658,21 @@ function pullComments(wsgiUrl, serviceName) {
   max-width: 550px;
 }
 @media (min-width: 1000px) {
-  #top-posts {
-    padding-left: 30px;
+  #right-column {
+    width: calc(100vw - 550px - 110px);
     position: absolute;
     top: 30px;
     right: 30px;
+  }
+
+  #top-posts {
     width: 350px;
   }
 }
 @media (min-width: 1450px) {
+  #right-column {
+    width: calc((100vw - 550px)/2 - 100px);
+  }
   .content, .webring {
     width: 550px;
     margin-left: auto;
@@ -762,10 +781,6 @@ pre {
     display: none;
   }
 }
-#preview {
-  position: absolute;
-  right: 30px;
-}
 #preview button {
   display: none;
 }
@@ -773,7 +788,7 @@ pre {
   display: none;
   margin: 0;
   padding: 0;
-  width: max(min(550px, calc((100vw - 550px)/2 - 100px)), 350px);
+  width: min(550px, 100%);
   height: 50vh;
 }
 ''',
@@ -1335,14 +1350,16 @@ class Post:
         config.relative_url(other.link()),
         other.title) for other in best_posts))
 
+    preview_iframe_html = (
+      '<div id=preview><iframe id=preview-iframe scrolling=no '
+      'sandbox="allow-same-origin"></iframe>'
+      '<button id=preview-open>open</button></div>')
+    
     wrapper.append(parse(
-      '<div id="top-posts">%s</div>' % best_posts_html))
+      '<div id="right-column"><div id="top-posts">%s</div>%s</div>' % (
+        best_posts_html,
+        '' if is_amp else preview_iframe_html)))
 
-    if not is_amp:
-      wrapper.append(parse(
-        '<div id=preview><iframe id=preview-iframe scrolling=no '
-        'sandbox="allow-same-origin"></iframe>'
-        '<button id=preview-open>open</button></div>'))
     
     wrapper.append(etree.Element('hr'))
     wrapper.append(parse(links_partial()))
