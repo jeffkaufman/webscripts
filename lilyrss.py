@@ -3,6 +3,8 @@
 from glob import glob
 import os
 import re
+import datetime
+import html
 
 posts = []
 
@@ -51,36 +53,23 @@ with open(os.path.expanduser("~/lw/posts.rss"), "w") as outf:
     <language>en-us</language>
 """)
   for date, short_fname, title, post in reversed(sorted(posts)):
+    post = html.escape(post)
+
     year, numeric_month, day = date.split('-')
-    short_month = {'01': 'Jan',
-                   '02': 'Feb',
-                   '03': 'Mar',
-                   '04': 'Apr',
-                   '05': 'May',
-                   '06': 'Jun',
-                   '07': 'Jul',
-                   '08': 'Aug',
-                   '09': 'Sep',
-                   '10': 'Oct',
-                   '11': 'Nov',
-                   '12': 'Dec'}[numeric_month]
-    for f, r in [("&", "&amp;"),
-                 ("<", "&lt;"),
-                 (">", "&gt;")]:
-      post = post.replace(f, r)
+    pub_date = datetime.date(
+      int(year), int(numeric_month), int(day)).strftime('%d %b %Y')
+
     outf.write("""
 <item>
   <guid>https://www.lilywise.com/%s</guid>
   <title>%s</title>
   <link>https://www.lilywise.com/%s</link>
-  <pubDate>%s %s %s 08:00:00 EST</pubDate>
+  <pubDate>%s 08:00:00 EST</pubDate>
   <description>
   %s
   </description>
-</item>""" % (short_fname, title, short_fname, day, short_month,
-              year, post))
+</item>""" % (short_fname, title, short_fname, pub_date, post))
   outf.write("""
 </channel>
 </rss>
 """)
-   
