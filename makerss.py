@@ -944,7 +944,7 @@ class Post:
         if token.startswith('old/'):
           _, token = token.split('/', 1)
           suffix = 'ea'
-        ea_link = 'http://effective-altruism.com/%s/%s' % (suffix, token)
+        ea_link = 'https://forum.effectivealtruism.org/%s/%s' % (suffix, token)
         services.append((4, 'the EA Forum', 'ea', ea_link, token))
       elif service == 'r':
         subreddit, post_id = token.split('/')
