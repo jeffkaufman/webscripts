@@ -369,7 +369,10 @@ def in_past(date, parsed_time):
         return False
 
     (start_hr, start_min), (end_hr, end_min) = parsed_time
-    
+
+    end_hr = int(end_hr)
+    end_min = int(end_min)
+        
     return (now.hour, now.minute) > (end_hr, end_min)
 
 if __name__ == "__main__":
