@@ -958,7 +958,7 @@ class Post:
 
     # sort by and then strip off priorities
     self.services = [x[1:] for x in sorted(services)]
-    self.tags = set(x for x in tags if '/' not in x)
+    self.tags = list(sorted(set(x for x in tags if '/' not in x)))
 
     for possible_update in element.findall('.//b'):
       update_text = possible_update.text
