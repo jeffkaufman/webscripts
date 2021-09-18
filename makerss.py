@@ -889,11 +889,12 @@ class Update:
   <description>%s</description>
 </item>''' % (
   config.relative_url(self.link()),
-  self.title,
+  quote(self.title),
   config.full_url(self.link()),
   self.day, self.short_month, self.year,
   quote(html))
 
+ 
 class Post:
   def __init__(self, slug, date, title, tags, element, openring):
     self.slug = slug
@@ -919,6 +920,8 @@ class Post:
     self.month, self.day, self.year = date.split()[1:4]
     self.short_month = self.month[:3]
 
+    self.fb_link = None
+
     services = []
     for tag in tags:
       if '/' not in tag:
@@ -935,6 +938,7 @@ class Post:
         else:
           token = token.split('_')[-1]
           fb_link = 'https://www.facebook.com/jefftk/posts/%s' % token
+          self.fb_link = fb_link
         services.append((2, 'facebook', 'fb', fb_link, token))
       elif service == 'lw':
         lw_link = 'https://lesswrong.com/%s' % token
@@ -1421,7 +1425,7 @@ class Post:
   <description>%s</description>
 </item>''' % (
   config.relative_url(self.link()),
-  self.title,
+  quote(self.title),
   config.full_url(self.link()),
   '\n  '.join('<category>%s</category>' % tag
             for tag in sorted(self.tags)),
@@ -1495,7 +1499,11 @@ def parsePosts():
           first.text = tags_h4.tail
           element.insert(0, first)
 
+        if not title:
+          print(post_elements)
+          
         post = Post(slug, date, title, tags, element, openring)
+
         posts.append(post)
         if post.published:
           published_posts.append(post)
@@ -1572,6 +1580,9 @@ def start():
 
   rss_entries = {} # (slug | update_slug-original_slug) -> entry
 
+        
+  fb_links = []
+  
   for post in parsePosts():
     fname_base = config.full_filename(
       os.path.join(config.new(config.posts), post.name))
@@ -1597,6 +1608,16 @@ def start():
       for update in post.updates.values():
         rss_entries['%s-%s' % (update.slug, post.slug)] = update.rss()
 
+      if post.fb_link:
+        fb_links.append([post.title, post.date, post.fb_link])
+
+  with open(config.full_filename("fblinks.html"), 'w') as outf:
+    outf.write("<ul>\n")
+    for title, date, fb_link in fb_links:
+      outf.write('<li>%s <a href="%s">%s</a>\n' % (
+        date, fb_link, title))
+    outf.write("</ul>\n")
+        
   rss_entries = list(reversed([
     entry for _, entry in sorted(rss_entries.items())]))
   for rss_file in [config.rss, config.rss_full]:
