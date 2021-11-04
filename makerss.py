@@ -513,6 +513,36 @@ function service_abbr(service) {
   }
 }
 
+function friendly_ts(ts) {
+  var now = Date.now() / 1000;
+  var delta = now - ts;
+  if (delta <= 60) {
+    return Math.round(delta) + "s";
+  }
+  delta /= 60;
+  if (delta <= 60) {
+    return Math.round(delta) + "m";
+  }
+  delta /= 60;
+  if (delta <= 24) {
+    return Math.round(delta) + "h";
+  }
+  delta /= 24;
+  if (delta <= 365) {
+    if (delta < 45) {
+      return Math.round(delta) + "d";
+    } else {
+      return Math.round(delta/30) + "m";
+    }
+  }
+  delta /= 365;
+  if (delta <= 100) {
+    return Math.round(delta) + "y";
+  }
+  delta /= 100;
+  return Math.round(delta) + "c";
+}
+
 function display_posts_helper(comments) {
   var h = ""
   for (var i = 0; i < comments.length; i++) {
@@ -527,9 +557,8 @@ function display_posts_helper(comments) {
     var service = comments[i][6];
 
     h += "<div class=comment id='" + anchor + "'>";
-    h += "<div style='display:none'>ts=" + ts + "</div>";
     h += "<a href='" + user_link + "'>" + name + "</a> (";
-    h += service_abbr(service) + "): ";
+    h += friendly_ts(ts) + ", via " +  service_abbr(service) + "):";
     h += "<a href='#" + anchor + "' class=commentlink>link</a>";
     h += "<div";
     if (last_visit.length > 0 && ts > last_visit/1000) {
