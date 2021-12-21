@@ -1410,13 +1410,16 @@ class Post:
 </div>
 '''))
 
-    best_posts = [
-      self.posts_by_slug[slug]
-      for slug in
-      random.choices(
+    best_post_slugs = []
+    while len(best_post_slugs) < 5:
+      slug, = random.choices(
         population=([slug for (slug, _, _) in BEST_POSTS]),
         weights=([weight for (_, _, weight) in BEST_POSTS]),
-        k=5)]
+        k=1)
+      if slug not in best_post_slugs:
+        best_post_slugs.append(slug)
+
+    best_posts = [self.posts_by_slug[slug] for slug in best_post_slugs]
 
     best_posts_html = '<p><b>More Posts</b></p><ul>%s</ul>' % (
       ''.join('<li><p><a href="%s">%s</a></p></li>' % (
