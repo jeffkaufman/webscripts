@@ -39,6 +39,7 @@ from lxml import etree
 import lxml.html
 from copy import deepcopy
 from collections import defaultdict
+import json
 
 USE_DOUBLECLICK=True
 
@@ -96,6 +97,68 @@ class Configuration:
     return '%s-prev' % fname
 
 config = Configuration()
+
+INTROS = {
+  "kids": """
+Julia and I have three kids, <a
+href="https://www.lilywise.com">Lily</a>, <a
+href="https://www.annawise.net">Anna</a>, and <a
+href="https://www.norawise.com">Nora</a>. As of early 2022, they are
+seven, five, and zero. As a parent, my goal is to show
+them how to do things, do for them what they can't do yet, and help
+them grow into the people they want to be.
+""",
+
+  "ling": """
+I majored in linguistics in college, along with computer science, and
+am still interested in language. I especially interested in changes in
+how language handles gender, and have been following the slow and
+steady growth of singular they.
+""",
+
+  "tech": """
+I'm a software engineer, currently working on ads at Google.  I'm
+especially interested in web browsers, web APIs, and improving
+privacy/security/efficiency by adding new capabilities to browsers.
+""",
+
+  "contra": """
+I've been contra dancing all my life, but got really interested in it
+in college.  I help organize our <a
+href="https://www.bidadance.org/">local dance</a> and <a href="https://www.beantownstomp.com/">dance weekend</a>, play
+for dances with my <a href="https://www.freeraisins.com/">two</a> <a
+href="https://www.kingfisherband.com/">bands</a>, lead <a href="https://www.jefftk.com/p/leading-an-open-band">open bands</a>,  maintain listings of
+<a href="https://www.trycontra.com/">local dances</a> and <a
+href="https://docs.google.com/spreadsheets/d/1fQq7pTtNVMYVRgOPbjNz2jnyw4RABGrQoplrSQntbn8/edit">weekends</a>,
+and used to <a href="https://www.jefftk.com/news/calling">call</a>.
+""",
+
+  "house": """
+Julia and I have a two family house in Somerville, where we live with
+our <a href="/news/kids">kids</a> and <a href="https://www.jefftk.com/p/shared-house-setup">housemates</a>.  Physically, the building was initially in
+pretty rough shape, and we've put a lot of work into fixing it up and
+making it the way we like it. Socially, we like having other people
+around, and I really value the 'socializing by default' that comes from
+having housemates.
+""",
+
+  "music": """
+I grew up in a musical family, and learned guitar as a kid. Later, I
+taught myself piano, mandolin, bass, <a
+href="/p/introduction-to-heel-toe-drumming">foot drums</a>, whistle,
+brass, and
+other things.  I play for contra dances, and enjoy figuring
+out how to play as many things simultaneously as I can.
+""",
+
+  "giving": """
+I'm interested in how I can most effectively turn my time and money
+into making the world better, and Julia and I have been into
+effective altruism since before it had a name. I'm currently earning
+to give, but have tried working on things that are more directly
+valuable and could see doing so again.
+"""
+}
 
 BEST_POSTS = [
   ('2021-11-03', 'Baby Sister Numbers', 5.0),
@@ -364,7 +427,7 @@ SNIPPETS = {
     nextPreviewClientY = null;
   }
 });</script>''',
-  
+
   'comment_script': r'''<script nonce="{{NONCE}}" type="text/javascript">
 var last_visit = document.cookie.replace(/(?:(?:^|.*;\s*)jtk_last_visit\s*\=\s*([^;]*).*$)|^.*$/, "$1");
 var current_time = new Date().getTime();
@@ -958,7 +1021,7 @@ class Update:
   self.day, self.short_month, self.year,
   quote(html))
 
- 
+
 class Post:
   def __init__(self, slug, date, title, tags, element, openring):
     self.slug = slug
@@ -1120,7 +1183,7 @@ class Post:
 
     for tt in element.findall('.//tt'):
       tt.tag = 'code'
-    
+
     if not self.published:
       element.insert(0, parse('<p><i>draft post</i></p>'))
 
@@ -1264,8 +1327,8 @@ class Post:
       head.append(parse(SNIPPETS['google_analytics_nonamp']))
 
     if not is_amp:
-      head.append(parse(SNIPPETS['hover_preview']))      
-      
+      head.append(parse(SNIPPETS['hover_preview']))
+
     # TODO: look into ld json schema for amp
 
     if is_amp:
@@ -1430,13 +1493,13 @@ class Post:
       '<div id=preview><iframe id=preview-iframe scrolling=no '
       'sandbox="allow-same-origin"></iframe>'
       '<button id=preview-open>open</button></div>')
-    
+
     wrapper.append(parse(
       '<div id="right-column"><div id="top-posts">%s</div>%s</div>' % (
         best_posts_html,
         '' if is_amp else preview_iframe_html)))
 
-    
+
     wrapper.append(etree.Element('hr'))
     wrapper.append(parse(links_partial()))
 
@@ -1573,7 +1636,7 @@ def parsePosts():
 
         if not title:
           print(post_elements)
-          
+
         post = Post(slug, date, title, tags, element, openring)
 
         posts.append(post)
@@ -1652,9 +1715,9 @@ def start():
 
   rss_entries = {} # (slug | update_slug-original_slug) -> entry
 
-        
+
   fb_links = []
-  
+
   for post in parsePosts():
     fname_base = config.full_filename(
       os.path.join(config.new(config.posts), post.name))
@@ -1689,7 +1752,7 @@ def start():
       outf.write('<li>%s <a href="%s">%s</a>\n' % (
         date, fb_link, title))
     outf.write("</ul>\n")
-        
+
   rss_entries = list(reversed([
     entry for _, entry in sorted(rss_entries.items())]))
   for rss_file in [config.rss, config.rss_full]:
@@ -1701,11 +1764,15 @@ def start():
           outf.write(rss_entry)
       outf.write(SNIPPETS['rss_footer'])
 
+  tag_json = {}
+
   for tag, tag_posts in tag_to_posts.items():
     if tag == 'all':
       rss_link = '/news.rss'
     else:
       rss_link = '/news/%s.rss' % tag
+
+    tag_json[tag] = [post.link() for post in tag_posts]
 
     entries = '\n'.join('''\
 <li><a href="%s">
@@ -1760,6 +1827,7 @@ body {
 %s<hr>
 <div id=content>
 <h2>Posts :: %s (<a href="%s">rss</a>)</h2>
+%s
 <ul>
 %s
 </ul>
@@ -1774,6 +1842,7 @@ body {
   links_partial(),
   tag,
   rss_link,
+  wrap_intro(INTROS.get(tag, "")),
   entries,
   links_partial()))
 
@@ -1790,6 +1859,16 @@ body {
              config.full_filename(os.path.join(config.out, 'index.html')))
   os.symlink(config.full_filename(os.path.join(config.out, 'all.html')),
              config.full_filename(os.path.join(config.posts, 'index.html')))
+
+  with open(config.full_filename(
+      os.path.join(config.out, 'tags.json')), "w") as outf:
+    outf.write(json.dumps(tag_json))
+
+def wrap_intro(intro):
+  if not intro:
+    return ""
+
+  return "<p>%s<p>" % (intro)
 
 def tidy_day(day):
   d = str(int(day))
