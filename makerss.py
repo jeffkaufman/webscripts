@@ -157,7 +157,38 @@ into making the world better, and Julia and I have been into
 effective altruism since before it had a name. I'm currently earning
 to give, but have tried working on things that are more directly
 valuable and could see doing so again.
-"""
+""",
+
+  "ideas": """
+I often have thoughts about how things could be better, and enjoy
+writing them up. Sometimes I end up building a prototype or
+otherwise making them happen, but most of them don't get past the
+idea stage.
+""",
+
+  "money": """
+A mix of economics, policy, and my personal experience.  I'm
+especially into financial transparency, writing up our personal
+finances and those of projects I've been involved in.
+""",
+
+  "covid-19": """
+The pandemic has been a huge part of our lives, displacing many
+things and shifting how we do many others.  A large fraction of my
+2020 and 2021 posts change back to the pandemic, even if I haven't
+categorized them that way here.
+""",
+
+  "": """
+""",
+  "": """
+""",
+  "": """
+""",
+  "": """
+""",
+  "": """
+""",
 }
 
 BEST_POSTS = [
