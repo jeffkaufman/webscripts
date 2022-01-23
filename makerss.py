@@ -1021,6 +1021,8 @@ class Update:
   self.day, self.short_month, self.year,
   quote(html))
 
+def hidden_topic(tag):
+  return tag in ["all", "lwfeed"]
 
 class Post:
   def __init__(self, slug, date, title, tags, element, openring):
@@ -1863,6 +1865,49 @@ body {
   with open(config.full_filename(
       os.path.join(config.out, 'tags.json')), "w") as outf:
     outf.write(json.dumps(tag_json))
+
+
+  count_topics = [(len(posts), tag, wrap_intro(INTROS.get(tag, "")))
+                  for (tag, posts) in tag_json.items()
+                  if not hidden_topic(tag)]
+  count_topics.sort(reverse=True)
+  topics_lis = ['<li><p><a href="/news/%s">%s</a> (%s)%s</li>' % (
+    topic, topic, count, intro) for (count, topic, intro) in count_topics]
+
+  with open(config.full_filename(
+      os.path.join(config.out, 'topics.html')), 'w') as outf:
+    outf.write('''
+<html>
+<head>
+  <title>Jeff :: Topics</title>
+  <meta name=viewport content="%s">
+</head>
+<body>
+<style>
+h2 { margin: .5em }
+body {
+   margin: 0;
+   padding: 0.5em;
+   max-width: 40em;
+}
+#content {
+  max-width: 550px;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+</head>
+<body>
+<h1>Topics</h1>
+<ul>
+%s
+</ul>
+</body>
+</html>
+    ''' % (
+      SNIPPETS['meta_viewport'],
+      '\n'.join(topics_lis),
+    ))
 
 def wrap_intro(intro):
   if not intro:
