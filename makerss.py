@@ -179,7 +179,11 @@ things and shifting how we do many others.  A large fraction of my
 categorized them that way here.
 """,
 
-  "": """
+  "food": """
+  Everyone needs to eat.  Looking through past posts, I see a slow
+  progression from a focus on frugality, to veganism (vegan <a
+  href="https://www.jefftk.com/p/shared-house-setup">housemates</a>),
+  to kids.
 """,
   "": """
 """,
