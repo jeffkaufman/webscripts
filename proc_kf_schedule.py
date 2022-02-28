@@ -72,6 +72,7 @@ def parse_table(table_strings, offset):
             days = line.replace("<td>","",1)
             state = "need place"
         elif state == "need place":
+            if line.startswith("<br>"): continue
             assert line.startswith("<td")
             assert not place
             place = line.replace("<td>","",1)
