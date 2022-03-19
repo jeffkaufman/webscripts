@@ -39,6 +39,7 @@ from lxml import etree
 import lxml.html
 from copy import deepcopy
 from collections import defaultdict
+import json
 
 USE_DOUBLECLICK=True
 
@@ -68,6 +69,7 @@ class Configuration:
     self.break_token = '~~break~~'
 
     self.notyet_token = 'notyet'
+    self.nolw_token = 'nolw'
 
     self.max_update_chars = 500
 
@@ -96,112 +98,244 @@ class Configuration:
 
 config = Configuration()
 
+INTROS = {
+  "kids": """
+Julia and I have three kids, <a
+href="https://www.lilywise.com">Lily</a>, <a
+href="https://www.annawise.net">Anna</a>, and <a
+href="https://www.norawise.com">Nora</a>. As of early 2022, they are
+seven, five, and zero. As a parent, my goal is to show
+them how to do things, do for them what they can't do yet, and help
+them grow into the people they want to be.
+""",
+
+  "ling": """
+I majored in linguistics in college, along with computer science, and
+am still interested in language. I especially interested in changes in
+how language handles gender, and have been following the slow and
+steady growth of singular they.
+""",
+
+  "tech": """
+I'm a software engineer, currently working on ads at Google.  I'm
+especially interested in web browsers, web APIs, and improving
+privacy/security/efficiency by adding new capabilities to browsers.
+""",
+
+  "contra": """
+I've been contra dancing all my life, but got really interested in it
+in college.  I help organize our <a
+href="https://www.bidadance.org/">local dance</a> and <a href="https://www.beantownstomp.com/">dance weekend</a>, play
+for dances with my <a href="https://www.freeraisins.com/">two</a> <a
+href="https://www.kingfisherband.com/">bands</a>, lead <a href="https://www.jefftk.com/p/leading-an-open-band">open bands</a>,  maintain listings of
+<a href="https://www.trycontra.com/">local dances</a> and <a
+href="https://docs.google.com/spreadsheets/d/1fQq7pTtNVMYVRgOPbjNz2jnyw4RABGrQoplrSQntbn8/edit">weekends</a>,
+and used to <a href="https://www.jefftk.com/news/calling">call</a>.
+""",
+
+  "house": """
+Julia and I have a two family house in Somerville, where we live with
+our <a href="/news/kids">kids</a> and <a href="https://www.jefftk.com/p/shared-house-setup">housemates</a>.  Physically, the building was initially in
+pretty rough shape, and we've put a lot of work into fixing it up and
+making it the way we like it. Socially, we like having other people
+around, and I really value the 'socializing by default' that comes from
+having housemates.
+""",
+
+  "music": """
+I grew up in a musical family, and learned guitar as a kid. Later, I
+taught myself piano, mandolin, bass, <a
+href="/p/introduction-to-heel-toe-drumming">foot drums</a>, whistle,
+brass, and
+other things.  I play for contra dances, and enjoy figuring
+out how to play as many things simultaneously as I can.
+""",
+
+  "giving": """
+I'm interested in how I can most effectively turn my time and money
+into making the world better, and Julia and I have been into
+effective altruism since before it had a name. I'm currently earning
+to give, but have tried working on things that are more directly
+valuable and could see doing so again.
+""",
+
+  "ideas": """
+I often have thoughts about how things could be better, and enjoy
+writing them up. Sometimes I end up building a prototype or
+otherwise making them happen, but most of them don't get past the
+idea stage.
+""",
+
+  "money": """
+A mix of economics, policy, and my personal experience.  I'm
+especially into financial transparency, writing up our personal
+finances and those of projects I've been involved in.
+""",
+
+  "covid-19": """
+The pandemic has been a huge part of our lives, displacing many
+things and shifting how we do many others.  A large fraction of my
+2020 and 2021 posts change back to the pandemic, even if I haven't
+categorized them that way here.
+""",
+
+  "food": """
+  Everyone needs to eat.  Looking through past posts, I see a slow
+  progression from a focus on frugality, to veganism (vegan <a
+  href="https://www.jefftk.com/p/shared-house-setup">housemates</a>),
+  to kids.
+""",
+  "": """
+""",
+  "": """
+""",
+  "": """
+""",
+  "": """
+""",
+}
+
 BEST_POSTS = [
-  ('2019-09-29', 'Candy for Nets'),
-  ('2019-09-16', 'Effective Altruism and Everyday Decisions'),
-  ('2019-09-15', 'Focus'),
-  ('2019-05-29', "There's Lots More To Do"),
-  ('2019-03-12', 'Equal Parenting Advice for Dads'),
-  ('2018-12-22', 'Boston Solstice 2018 Retrospective'),
-  ('2018-12-16', 'College and Earning to Give'),
-  ('2018-12-14', 'Taking a Safety Report'),
-  ('2018-12-07', 'Taking Someone Aside'),
-  ('2018-07-10', 'How to Parent More Predictably'),
-  ('2018-07-03', 'Street Training'),
-  ('2018-04-29', 'Soundproofing the Ceiling'),
-  ('2018-01-31', 'Recording Your Own CD'),
-  ('2018-01-20', 'More Considerations on Buying a House'),
-  ('2018-01-13', 'Dividing Tasks'),
-  ('2017-09-28', 'Guardedness in EA'),
-  ('2017-09-15', 'Superintelligence Risk Project'),
-  ('2016-12-26', 'Mandolin Teaching Videos'),
-  ('2016-10-24', 'Details Behind the InIn Document'),
-  ('2016-10-02', 'Responsible Transparency Consumption'),
-  ('2016-08-08', 'Earning to Give Talk'),
-  ('2016-07-17', 'Scientific Charity Movement'),
-  ('2016-06-20', 'Mike Mulligan and His Obsolete Technology'),
-  ('2016-06-15', 'Reading about guns'),
-  ('2016-02-26', 'Make Buses Dangerous'),
-  ('2016-01-16', 'Tiny House Movement'),
-  ('2015-11-29', 'Giving vs Doing'),
-  ('2015-11-20', 'Negative News'),
-  ('2015-11-09', 'Thoughtful Non-consumption'),
-  ('2015-10-20', 'How Bad Is Dairy?'),
-  ('2015-10-07', 'Mercury Spill'),
-  ('2015-08-11', 'Why Global Poverty?'),
-  ('2015-07-24', 'Lyme Disease By County'),
-  ('2015-06-27', 'Cheap College via Marrying'),
-  ('2015-06-17', 'Subway Synchronization Protocol'),
-  ('2015-05-14', 'Singular They FAQ'),
-  ('2015-04-12', 'Instantiating Arguments'),
-  ('2015-01-14', 'The Privilege of Earning To Give'),
-  ('2014-12-25', "We Haven't Uploaded Worms"),
-  ('2014-09-08', 'Policies'),
-  ('2014-08-25', 'Persistent Idealism'),
-  ('2014-07-14', 'The Economics of a Studio CD'),
-  ('2014-07-01', 'Preparing for our CD'),
-  ('2014-06-25', 'Optimizing Looks Weird'),
-  ('2014-02-27', 'Playing to Lose'),
-  ('2014-02-18', 'Dance Weekend and Festival Survey'),
-  ('2014-01-26', 'Contra Dance Band Size'),
-  ('2013-12-28', 'Getting Booked For Dances'),
-  ('2013-10-22', 'OK to Have Kids?'),
-  ('2013-10-01', 'John Wesley on Earning to Give'),
-  ('2013-08-22', 'Rationing With Small Reserves'),
-  ('2013-08-13', 'Simplest Interesting Game'),
-  ('2013-07-21', 'Against Singular Ye'),
-  ('2013-06-25', 'Is Pandora Really Exploiting Artists?'),
-  ('2013-06-14', 'Is Unicode Safe?'),
-  ('2013-06-06', 'Survey of Historical Stock Advice'),
-  ('2013-05-28', 'Haiti and Disaster Relief'),
-  ('2013-05-11', 'Keeping Choices Donation Neutral'),
-  ('2013-04-01', 'The Unintuitive Power Laws of Giving'),
-  ('2013-03-06', 'Getting Myself to Eat Vegetables'),
-  ('2013-01-22', 'Debt Relief Is Bad Means Testing'),
-  ('2012-10-30', 'Contra Cliquishness: Healthy?'),
-  ('2012-10-03', 'Parenting and Happiness'),
-  ('2012-09-21', 'Make Your Giving Public'),
-  ('2012-09-17', 'Record Your Playing'),
-  ('2012-09-11', 'Objecting to Situations'),
-  ('2012-08-08', 'Artificial Recordings and Unrealistic Standards'),
-  ('2012-08-07', 'Singular They: Towards Ungendered Language'),
-  ('2012-07-14', 'Exercises'),
-  ('2012-06-17', 'Altruistic Kidney Donation'),
-  ('2012-03-29', 'Teach Yourself any Instrument'),
-  ('2012-03-28', 'Brain Preservation'),
-  ('2012-03-24', 'Insurance and Health Care'),
-  ('2012-02-13', 'You Should Be Logging Shell History'),
-  ('2012-02-03', 'Octaveless Bass Notes'),
-  ('2011-12-29', 'Instrument Complexity and Automation'),
-  ('2011-09-23', 'Letter From Our Crazy Ex-Landlord'),
-  ('2011-12-03', 'A Right to Publicy'),
-  ('2011-11-13', 'Personal Consumption Changes As Charity'),
-  ('2011-11-02', 'Whole Brain Emulation and Nematodes'),
-  ('2011-10-15', 'Local Action and Remote Donation'),
-  ('2011-10-04', 'Online Community Aging'),
-  ('2011-09-11', 'Mandolin Microphone Placement'),
-  ('2011-09-09', 'Charities and Waste'),
-  ('2011-08-08', 'Negative Income Tax'),
-  ('2011-07-27', 'Belief Listing Project: Giving'),
-  ('2011-07-18', 'Contra Dance Unplugged'),
-  ('2011-07-15', 'Undisabling A Keyboard\'s Internal Speakers'),
-  ('2011-06-18', 'Boston Apartment Prices Map'),
-  ('2011-04-12', 'Giving Up On Privacy'),
-  ('2011-01-08', 'Significant Whitespace In Expressions'),
-  ('2010-12-05', 'Abstracting Compassion'),
-  ('2010-11-17', 'Transit Service Quality Map'),
-  ('2010-07-23', 'Tracking Down a Statistic: Does Fairtrade Work?'),
-  ('2010-05-25', 'Putting Words Off-Limits'),
+  ('2021-11-03', 'Baby Sister Numbers', 5.0),
+  ('2021-10-16', 'Explaining Capitalism Harder', 10.0),
+  ('2021-09-25', 'Designing Low Upkeep Software', 30.0),
+  ('2021-09-23', 'Walkie-Talkies', 10.0),
+  ('2021-09-04', 'Kids Roaming', 4.0),
+  ('2021-07-22', 'Fire Law Incentives', 10.0),
+  ('2021-06-21', 'To the Robobassinet and Progress', 20.0),
+  ('2021-06-14', 'Walking to School', 20.0),
+  ('2021-06-11', 'Alarms Are Better Than Chivvying', 10.0),
+  ('2021-05-05', 'Thoughts on Ad Blocking', 10.0),
+  ('2021-05-02', 'Why I Work on Ads', 100.0),
+  ('2021-02-23', 'Avoid Contentious Terms', 4.0),
+  ('2021-01-22', 'Lifelong investments', 50.0),
+  ('2021-01-03', 'Bets, Bonds, and Kindergarteners', 100.0),
+  ('2020-12-17', 'Adapting to Means Testing', 10.0),
+  ('2020-10-11', 'Why Boston?', 3.0),
+  ('2020-07-03', 'Poly Domestic Partnerships', 3.0),
+  ('2020-06-07', 'Growing Independence', 100.0),
+  ('2020-05-18', 'English Bread Regulations', 1.0),
+  ('2020-05-12', 'Kids and Time', 2.0),
+  ('2020-05-09', 'Shared House Setup', 5.0),
+  ('2020-04-11', 'Ethernet Is Worth It For Video Calls', 2.0),
+  ('2020-03-25', 'Price Gouging and Speculative Costs', 20.0),
+  ('2020-03-24', 'Authorities and Amateurs', 50.0),
+  ('2020-03-16', 'King and Princess', 3.0),
+  ('2020-01-21', 'Disasters', 1.0),
+  ('2019-12-19', 'Should We Still Fly?', 5.0),
+  ('2019-12-12', 'Fractional Sweets', 1.0),
+  ('2019-12-11', 'Two-headed Go', 1.0),
+  ('2019-12-07', 'Ungendered Spanish', 5.0),
+  ('2019-11-23', 'Market Rate Food Is Luxury Food', 30.0),
+  ('2019-11-03', 'Playing Dances With a Kid', 20.0),
+  ('2019-10-16', 'Make more land', 100.0),
+  ('2019-10-05', 'Eight O\'Clock is Relative', 5.0),
+  ('2019-10-04', 'Ideal Number of Parents', 1.0),
+  ('2019-09-29', 'Candy for Nets', 50.0),
+  ('2019-09-16', 'Effective Altruism and Everyday Decisions', 100.0),
+  ('2019-09-15', 'Focus', 100.0),
+  ('2019-05-29', "There's Lots More To Do", 10.0),
+  ('2019-03-12', 'Equal Parenting Advice for Dads', 100.0),
+  ('2018-12-22', 'Boston Solstice 2018 Retrospective', 1.0),
+  ('2018-12-16', 'College and Earning to Give', 10.0),
+  ('2018-12-14', 'Taking a Safety Report', 20.0),
+  ('2018-12-07', 'Taking Someone Aside', 50.0),
+  ('2018-07-10', 'How to Parent More Predictably', 100.0),
+  ('2018-07-03', 'Street Training', 20.0),
+  ('2018-04-29', 'Soundproofing the Ceiling', 5.0),
+  ('2018-01-31', 'Recording Your Own CD', 2.0),
+  ('2018-01-20', 'More Considerations on Buying a House', 1.0),
+  ('2018-01-13', 'Dividing Tasks', 10.0),
+  ('2017-09-28', 'Guardedness in EA', 2.0),
+  ('2017-09-15', 'Superintelligence Risk Project', 1.0),
+  ('2016-12-26', 'Mandolin Teaching Videos', 2.0),
+  ('2016-10-24', 'Details Behind the InIn Document', 1.0),
+  ('2016-10-02', 'Responsible Transparency Consumption', 10.0),
+  ('2016-08-08', 'Earning to Give Talk', 1.0),
+  ('2016-07-17', 'Scientific Charity Movement', 5.0),
+  ('2016-06-20', 'Mike Mulligan and His Obsolete Technology', 1.0),
+  ('2016-06-15', 'Reading about guns', 1.0),
+  ('2016-02-26', 'Make Buses Dangerous', 1.0),
+  ('2016-01-16', 'Tiny House Movement', 1.0),
+  ('2015-11-29', 'Giving vs Doing', 1.0),
+  ('2015-11-20', 'Negative News', 1.0),
+  ('2015-11-09', 'Thoughtful Non-consumption', 1.0),
+  ('2015-10-20', 'How Bad Is Dairy?', 1.0),
+  ('2015-10-07', 'Mercury Spill', 5.0),
+  ('2015-08-11', 'Why Global Poverty?', 1.0),
+  ('2015-07-24', 'Lyme Disease By County', 1.0),
+  ('2015-06-27', 'Cheap College via Marrying', 1.0),
+  ('2015-06-17', 'Subway Synchronization Protocol', 1.0),
+  ('2015-05-14', 'Singular They FAQ', 1.0),
+  ('2015-04-12', 'Instantiating Arguments', 1.0),
+  ('2015-01-14', 'The Privilege of Earning To Give', 100.0),
+  ('2014-12-25', "We Haven't Uploaded Worms", 1.0),
+  ('2014-09-08', 'Policies', 10.0),
+  ('2014-08-25', 'Persistent Idealism', 1.0),
+  ('2014-07-14', 'The Economics of a Studio CD', 1.0),
+  ('2014-07-01', 'Preparing for our CD', 1.0),
+  ('2014-06-25', 'Optimizing Looks Weird', 10.0),
+  ('2014-02-27', 'Playing to Lose', 1.0),
+  ('2014-02-18', 'Dance Weekend and Festival Survey', 1.0),
+  ('2014-01-26', 'Contra Dance Band Size', 1.0),
+  ('2013-12-28', 'Getting Booked For Dances', 1.0),
+  ('2013-10-22', 'OK to Have Kids?', 1.0),
+  ('2013-10-01', 'John Wesley on Earning to Give', 1.0),
+  ('2013-08-22', 'Rationing With Small Reserves', 1.0),
+  ('2013-08-13', 'Simplest Interesting Game', 5.0),
+  ('2013-07-21', 'Against Singular Ye', 1.0),
+  ('2013-06-25', 'Is Pandora Really Exploiting Artists?', 1.0),
+  ('2013-06-14', 'Is Unicode Safe?', 5.0),
+  ('2013-06-06', 'Survey of Historical Stock Advice', 5.0),
+  ('2013-05-28', 'Haiti and Disaster Relief', 2.0),
+  ('2013-05-11', 'Keeping Choices Donation Neutral', 1.0),
+  ('2013-04-01', 'The Unintuitive Power Laws of Giving', 1.0),
+  ('2013-03-06', 'Getting Myself to Eat Vegetables', 3.0),
+  ('2013-01-22', 'Debt Relief Is Bad Means Testing', 1.0),
+  ('2012-10-30', 'Contra Cliquishness: Healthy?', 1.0),
+  ('2012-10-03', 'Parenting and Happiness', 1.0),
+  ('2012-09-21', 'Make Your Giving Public', 1.0),
+  ('2012-09-17', 'Record Your Playing', 1.0),
+  ('2012-09-11', 'Objecting to Situations', 1.0),
+  ('2012-08-08', 'Artificial Recordings and Unrealistic Standards', 1.0),
+  ('2012-08-07', 'Singular They: Towards Ungendered Language', 1.0),
+  ('2012-07-14', 'Exercises', 1.0),
+  ('2012-06-17', 'Altruistic Kidney Donation', 1.0),
+  ('2012-03-29', 'Teach Yourself any Instrument', 1.0),
+  ('2012-03-28', 'Brain Preservation', 1.0),
+  ('2012-03-24', 'Insurance and Health Care', 1.0),
+  ('2012-02-13', 'You Should Be Logging Shell History', 10.0),
+  ('2012-02-03', 'Octaveless Bass Notes', 1.0),
+  ('2011-12-29', 'Instrument Complexity and Automation', 1.0),
+  ('2011-09-23', 'Letter From Our Crazy Ex-Landlord', 1.0),
+  ('2011-12-03', 'A Right to Publicy', 1.0),
+  ('2011-11-13', 'Personal Consumption Changes As Charity', 1.0),
+  ('2011-11-02', 'Whole Brain Emulation and Nematodes', 1.0),
+  ('2011-10-15', 'Local Action and Remote Donation', 1.0),
+  ('2011-10-04', 'Online Community Aging', 1.0),
+  ('2011-09-11', 'Mandolin Microphone Placement', 1.0),
+  ('2011-09-09', 'Charities and Waste', 1.0),
+  ('2011-08-08', 'Negative Income Tax', 1.0),
+  ('2011-07-27', 'Belief Listing Project: Giving', 1.0),
+  ('2011-07-18', 'Contra Dance Unplugged', 1.0),
+  ('2011-07-15', 'Undisabling A Keyboard\'s Internal Speakers', 1.0),
+  ('2011-06-18', 'Boston Apartment Prices Map', 1.0),
+  ('2011-04-12', 'Giving Up On Privacy', 1.0),
+  ('2011-01-08', 'Significant Whitespace In Expressions', 1.0),
+  ('2010-12-05', 'Abstracting Compassion', 1.0),
+  ('2010-11-17', 'Transit Service Quality Map', 1.0),
+  ('2010-07-23', 'Tracking Down a Statistic: Does Fairtrade Work?', 1.0),
+  ('2010-05-25', 'Putting Words Off-Limits', 1.0),
 ]
 
 SNIPPETS = {
   'meta_viewport': 'width=device-width,minimum-scale=1,initial-scale=1',
 
   'google_analytics': r'''
-<script>
+<script nonce="{{NONCE}}">
   (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
   (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  m=s.getElementsByTagName(o)[0];a.async=1;a.nonce='{{NONCE}}';a.src=g;m.parentNode.insertBefore(a,m)
   })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
 
   ga('create', 'UA-27645543-1', 'auto');
@@ -210,10 +344,10 @@ SNIPPETS = {
 ''',
 
   'google_analytics_nonamp': r'''
-<script>
+<script nonce="{{NONCE}}">
   (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
   (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  m=s.getElementsByTagName(o)[0];a.async=1;a.nonce='{{NONCE}}';a.src=g;m.parentNode.insertBefore(a,m)
   })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
 
   ga('create', 'UA-27645543-1', 'auto');
@@ -245,7 +379,91 @@ SNIPPETS = {
 </script>
 </amp-analytics>''',
 
-  'comment_script': r'''<script type="text/javascript">
+  'hover_preview': r'''<script nonce="{{NONCE}}" type="text/javascript">
+  window.addEventListener("load", () => {
+  var pifr = document.getElementById("preview-iframe");
+  document.querySelectorAll("a[href^='/p/']").forEach(a => {
+    a.addEventListener("mouseover", hoverInnerLink);
+  });
+
+
+  var waitingForLoad = false;
+  var nextPreview = null;
+  var currentPreview = null;
+  var nextPreviewY = null;
+  var currentPreviewY = null;
+
+  function hoverInnerLink(e) {
+    if (window.innerWidth < 1000) {
+      return;
+    }
+    if (currentPreview == e.target.href) {
+      return;
+    }
+    nextPreview = e.target.href;
+    nextPreviewPageY = e.pageY;
+    nextPreviewClientY = e.clientY;
+    if (waitingForLoad) {
+      return;
+    }
+    loadPreview();
+  }
+
+  function loadPreview() {
+    if (!nextPreview) {
+      return;
+    }
+
+    var iframeTarget = nextPreview;
+
+    var preview = document.getElementById("preview");
+    pifr.style.display = "block";
+    var open = document.getElementById("preview-open");
+    open.style.display = "block";
+    open.onclick = function() {
+      window.top.location = iframeTarget;
+    };
+
+    // amount of padding needed to put the preview at mouse location
+    var newPreviewY = nextPreviewPageY
+        - document.getElementById("top-posts").getBoundingClientRect().height
+        - 38;
+
+    var approxPreviewHeight = window.innerHeight/2 + 100;
+
+    if (nextPreviewClientY > window.innerHeight - approxPreviewHeight) {
+      newPreviewY -= (nextPreviewClientY - (
+          window.innerHeight - approxPreviewHeight));
+    }
+
+    if (newPreviewY < 0) {
+      newPreviewY = 0;
+    }
+
+    if (currentPreviewY && Math.abs(newPreviewY - currentPreviewY) < 30) {
+      newPreviewY = currentPreviewY;
+    }
+    preview.style.marginTop = newPreviewY + "px";
+
+    pifr.addEventListener("load", () => {
+      pifr.contentWindow.addEventListener("click", function() {
+        window.top.location = iframeTarget;
+      });
+      loadPreview();
+    });
+
+    // https://stackoverflow.com/questions/5259154/firefox-back-button-vs-iframes
+    pifr.contentWindow.location.replace(iframeTarget);
+
+    currentPreview = nextPreview;
+    nextPreview = null;
+    currentPreviewY = newPreviewY;
+    nextPreviewPageY = null;
+    nextPreviewClientY = null;
+  }
+});</script>''',
+
+  'comment_script': r'''<script nonce="{{NONCE}}" type="text/javascript">
 var last_visit = document.cookie.replace(/(?:(?:^|.*;\s*)jtk_last_visit\s*\=\s*([^;]*).*$)|^.*$/, "$1");
 var current_time = new Date().getTime();
 var one_year_gmt_str = new Date(current_time + 31536000000).toGMTString();
@@ -428,6 +646,36 @@ function service_abbr(service) {
   }
 }
 
+function friendly_ts(ts) {
+  var now = Date.now() / 1000;
+  var delta = now - ts;
+  if (delta <= 60) {
+    return Math.round(delta) + "s";
+  }
+  delta /= 60;
+  if (delta <= 60) {
+    return Math.round(delta) + "m";
+  }
+  delta /= 60;
+  if (delta <= 24) {
+    return Math.round(delta) + "h";
+  }
+  delta /= 24;
+  if (delta <= 365) {
+    if (delta < 45) {
+      return Math.round(delta) + "d";
+    } else {
+      return Math.round(delta/30) + "m";
+    }
+  }
+  delta /= 365;
+  if (delta <= 100) {
+    return Math.round(delta) + "y";
+  }
+  delta /= 100;
+  return Math.round(delta) + "c";
+}
+
 function display_posts_helper(comments) {
   var h = ""
   for (var i = 0; i < comments.length; i++) {
@@ -441,10 +689,9 @@ function display_posts_helper(comments) {
     var children = comments[i][5];
     var service = comments[i][6];
 
-    h += "<div class=comment id='" + anchor + "'>";
-    h += "<div style='display:none'>ts=" + ts + "</div>";
+    h += "<div class=comment id='" + anchor + "' ts=" + ts + ">";
     h += "<a href='" + user_link + "'>" + name + "</a> (";
-    h += service_abbr(service) + "): ";
+    h += friendly_ts(ts) + ", via " +  service_abbr(service) + "):";
     h += "<a href='#" + anchor + "' class=commentlink>link</a>";
     h += "<div";
     if (last_visit.length > 0 && ts > last_visit/1000) {
@@ -547,9 +794,10 @@ function pullComments(wsgiUrl, serviceName) {
   'rss_footer': '\n</channel>\n</rss>',
 
   'css': '''\
-.comment-thread {margin: 0px 0px 0px 30px;}
+.comment-thread {margin: 0 0 0 0.5em}
 .content {max-width:550px;}
 .comment {max-width: 448px;
+          min-width: 10em;
           overflow: hidden;
           overflow-wrap: break-word;
           margin-top: 0px;
@@ -564,12 +812,39 @@ function pullComments(wsgiUrl, serviceName) {
               visibility: hidden;}
 .comment:hover .commentlink {visibility: visible}
 .highlighted {background-color: lightyellow;}
-@media (min-width: 850px) {
-  #top-posts { padding-left: 30px;
-               position: absolute;
-               top: 30px;
-               left: 600px;
-               max-width: 200px;}}
+#top-posts ul  {
+  padding-left: 0;
+  list-style: none;
+}
+#ad-wrapper {
+  max-width: 550px;
+}
+@media (min-width: 1000px) {
+  #right-column {
+    width: calc(100vw - 550px - 110px);
+    position: absolute;
+    top: 30px;
+    right: 30px;
+  }
+
+  #top-posts {
+    width: 350px;
+  }
+}
+@media (min-width: 1450px) {
+  #right-column {
+    width: calc((100vw - 550px)/2 - 100px);
+  }
+  .content, .webring {
+    width: 550px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  #ad-wrapper {
+    max-width: 100vw;
+  }
+}
+
 #title-date-tags { width: 100% }
 #wrapper { margin: 8px}
 body {margin: 0}
@@ -606,9 +881,6 @@ body {margin: 0}
   padding-top: 1em;
   padding-bottom: 1em;
   text-align: center;
-}
-#ad-wrapper {
-  max-width: 550px;
 }
 .webring {
   max-width: 550px;
@@ -655,6 +927,31 @@ body {margin: 0}
 }
 pre {
   overflow-x: scroll;
+}
+.headfoot ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+.headfoot li {
+  display: inline;
+  margin-left: 5px;
+  margin-right: 5px;
+}
+@media (max-width: 1000px) {
+  #preview {
+    display: none;
+  }
+}
+#preview button {
+  display: none;
+}
+#preview-iframe {
+  display: none;
+  margin: 0;
+  padding: 0;
+  width: min(550px, 100%);
+  height: 50vh;
 }
 ''',
 
@@ -754,10 +1051,13 @@ class Update:
   <description>%s</description>
 </item>''' % (
   config.relative_url(self.link()),
-  self.title,
+  quote(self.title),
   config.full_url(self.link()),
   self.day, self.short_month, self.year,
   quote(html))
+
+def hidden_topic(tag):
+  return tag in ["all", "lwfeed"]
 
 class Post:
   def __init__(self, slug, date, title, tags, element, openring):
@@ -765,7 +1065,11 @@ class Post:
     self.date = date
     self.title = title
     self.published = config.notyet_token not in tags
-    tags = [x for x in tags if x != config.notyet_token]
+    yeslw = config.nolw_token not in tags
+    tags = [x for x in tags
+            if x != config.notyet_token and x != config.nolw_token]
+    if yeslw:
+      tags.append("lwfeed")
     self.name = title_to_url_component(title)
     self.element = element
     self.openring = openring
@@ -779,6 +1083,8 @@ class Post:
 
     self.month, self.day, self.year = date.split()[1:4]
     self.short_month = self.month[:3]
+
+    self.fb_link = None
 
     services = []
     for tag in tags:
@@ -796,6 +1102,7 @@ class Post:
         else:
           token = token.split('_')[-1]
           fb_link = 'https://www.facebook.com/jefftk/posts/%s' % token
+          self.fb_link = fb_link
         services.append((2, 'facebook', 'fb', fb_link, token))
       elif service == 'lw':
         lw_link = 'https://lesswrong.com/%s' % token
@@ -805,7 +1112,7 @@ class Post:
         if token.startswith('old/'):
           _, token = token.split('/', 1)
           suffix = 'ea'
-        ea_link = 'http://effective-altruism.com/%s/%s' % (suffix, token)
+        ea_link = 'https://forum.effectivealtruism.org/%s/%s' % (suffix, token)
         services.append((4, 'the EA Forum', 'ea', ea_link, token))
       elif service == 'r':
         subreddit, post_id = token.split('/')
@@ -819,7 +1126,7 @@ class Post:
 
     # sort by and then strip off priorities
     self.services = [x[1:] for x in sorted(services)]
-    self.tags = set(x for x in tags if '/' not in x)
+    self.tags = list(sorted(set(x for x in tags if '/' not in x)))
 
     for possible_update in element.findall('.//b'):
       update_text = possible_update.text
@@ -913,7 +1220,7 @@ class Post:
 
     for tt in element.findall('.//tt'):
       tt.tag = 'code'
-    
+
     if not self.published:
       element.insert(0, parse('<p><i>draft post</i></p>'))
 
@@ -1017,29 +1324,28 @@ class Post:
 
     if is_amp:
       head.append(parse('''\
-<script async custom-element="amp-ad"
+<script nonce="{{NONCE}}" async custom-element="amp-ad"
    src="https://cdn.ampproject.org/v0/amp-ad-0.1.js"></script>'''))
     else:
       head.append(parse('''\
-<script async='async' src='https://www.googletagservices.com/tag/js/gpt.js'></script>'''))
+<script nonce="{{NONCE}}" async='async' src='https://www.googletagservices.com/tag/js/gpt.js'></script>'''))
       head.append(parse('''\
-<script>
+<script nonce="{{NONCE}}">
   var googletag = googletag || {};
   googletag.cmd = googletag.cmd || [];
 </script>'''))
       head.append(parse('''\
-<script>
+<script nonce="{{NONCE}}">
   googletag.cmd.push(function() {
-      var sizes = [[300, 250]];
-      if (window.innerWidth > 550) {
-        // desktop
-        sizes.push([550, 250]);
-      } else {
-        var useWidth = window.innerWidth - 8 - 8;
-        sizes.push([useWidth, 250]);
-        sizes.push([useWidth, Math.round(useWidth / 300 * 250)]);
+      googletag.pubads().setForceSafeFrame(true).setSafeFrameConfig({useUniqueDomain: true});
+      var maxAdWidth = 550;
+      if (window.innerWidth >= 1030 || window.innerWidth < 850) {
+        maxAdWidth =  window.innerWidth - 16;
       }
-      googletag.defineSlot('/21707489405/post_bottom_square', sizes, 'div-gpt-ad-1524882696974-0').addService(googletag.pubads());
+      googletag.defineSlot('/21707489405/post_bottom_square', {
+         'fixed': [300, 250],
+         'max': [maxAdWidth, 400],
+      }, 'div-gpt-ad-1524882696974-0').addService(googletag.pubads());
   googletag.pubads().enableSingleRequest();
   googletag.enableServices();
 });
@@ -1057,6 +1363,8 @@ class Post:
     else:
       head.append(parse(SNIPPETS['google_analytics_nonamp']))
 
+    if not is_amp:
+      head.append(parse(SNIPPETS['hover_preview']))
 
     # TODO: look into ld json schema for amp
 
@@ -1085,7 +1393,8 @@ class Post:
       tag_block = '<span>%s</span>&nbsp;&nbsp;<small><tt>%s</tt></small>' % (
         ', '.join(
           '<i><a href="/news/%s">%s</a></i>' % (tag, tag)
-          for tag in self.tags),
+          for tag in self.tags
+          if tag != "lwfeed"),
         '[amp]' if is_amp else '[html]')
 
     content.append(parse('''<table id="title-date-tags">
@@ -1155,7 +1464,7 @@ class Post:
         content.append(parse('''\
 <div id="comments">
 %s
-<script type="text/javascript">
+<script nonce="{{NONCE}}" type="text/javascript">
 %s
 </script>
 </div>''' % (
@@ -1194,23 +1503,39 @@ class Post:
       wrapper.append(parse('''\
 <div id="ad-wrapper">
 <div id='div-gpt-ad-1524882696974-0'>
-  <script>
+  <script nonce="{{NONCE}}">
     googletag.cmd.push(function() { googletag.display('div-gpt-ad-1524882696974-0'); });
   </script>
 </div>
 </div>
 '''))
 
-    best_posts = [self.posts_by_slug[slug]
-                  for slug, _ in random.sample(BEST_POSTS, 5)]
+    best_post_slugs = []
+    while len(best_post_slugs) < 5:
+      slug, = random.choices(
+        population=([slug for (slug, _, _) in BEST_POSTS]),
+        weights=([weight for (_, _, weight) in BEST_POSTS]),
+        k=1)
+      if slug not in best_post_slugs:
+        best_post_slugs.append(slug)
 
-    best_posts_html = '<p>More Posts:</p><ul>%s</ul>' % (
+    best_posts = [self.posts_by_slug[slug] for slug in best_post_slugs]
+
+    best_posts_html = '<p><b>More Posts</b></p><ul>%s</ul>' % (
       ''.join('<li><p><a href="%s">%s</a></p></li>' % (
         config.relative_url(other.link()),
         other.title) for other in best_posts))
 
+    preview_iframe_html = (
+      '<div id=preview><iframe id=preview-iframe scrolling=no '
+      'sandbox="allow-same-origin"></iframe>'
+      '<button id=preview-open>open</button></div>')
+
     wrapper.append(parse(
-      '<div id="top-posts">%s</div>' % best_posts_html))
+      '<div id="right-column"><div id="top-posts">%s</div>%s</div>' % (
+        best_posts_html,
+        '' if is_amp else preview_iframe_html)))
+
 
     wrapper.append(etree.Element('hr'))
     wrapper.append(parse(links_partial()))
@@ -1272,7 +1597,7 @@ class Post:
   <description>%s</description>
 </item>''' % (
   config.relative_url(self.link()),
-  self.title,
+  quote(self.title),
   config.full_url(self.link()),
   '\n  '.join('<category>%s</category>' % tag
             for tag in sorted(self.tags)),
@@ -1346,7 +1671,11 @@ def parsePosts():
           first.text = tags_h4.tail
           element.insert(0, first)
 
+        if not title:
+          print(post_elements)
+
         post = Post(slug, date, title, tags, element, openring)
+
         posts.append(post)
         if post.published:
           published_posts.append(post)
@@ -1385,16 +1714,15 @@ def parsePosts():
   return posts
 
 def links_partial():
-  sep = '&#160;&#160;::&#160;&#160;'
-  s = sep.join(
-    ('<a href="/" rel="author">Jeff Kaufman</a>',
-     '<a href="/p/index">Posts</a>',
-     '<a href="/news.rss">RSS</a>',
-     # can't use rewind symbol because apple makes it ugly
-     '<span><a href="__REVERSE_RSS__">&#9666;&#9666;RSS</a>',
-     '</span><a href="/contact">Contact</a>'))
-  s += '\n'
-  return '<div class="headfoot">%s</div>' % s
+  return '''
+<div class="headfoot">
+  <li><a href="/" rel="author">Jeff Kaufman</a></li>
+  <li><a href="/p/index">Posts</a></li>
+  <li><a href="/news.rss">RSS</a></li>
+  <li><a href="__REVERSE_RSS__">&#9666;&#9666;RSS</a></li>
+  <li><a href="/contact">Contact</a></li>
+</div>
+'''
 
 def delete_old_staging():
   for modifier in [config.new, config.prev]:
@@ -1424,6 +1752,9 @@ def start():
 
   rss_entries = {} # (slug | update_slug-original_slug) -> entry
 
+
+  fb_links = []
+
   for post in parsePosts():
     fname_base = config.full_filename(
       os.path.join(config.new(config.posts), post.name))
@@ -1449,6 +1780,16 @@ def start():
       for update in post.updates.values():
         rss_entries['%s-%s' % (update.slug, post.slug)] = update.rss()
 
+      if post.fb_link:
+        fb_links.append([post.title, post.date, post.fb_link])
+
+  with open(config.full_filename("fblinks.html"), 'w') as outf:
+    outf.write("<ul>\n")
+    for title, date, fb_link in fb_links:
+      outf.write('<li>%s <a href="%s">%s</a>\n' % (
+        date, fb_link, title))
+    outf.write("</ul>\n")
+
   rss_entries = list(reversed([
     entry for _, entry in sorted(rss_entries.items())]))
   for rss_file in [config.rss, config.rss_full]:
@@ -1460,11 +1801,15 @@ def start():
           outf.write(rss_entry)
       outf.write(SNIPPETS['rss_footer'])
 
+  tag_json = {}
+
   for tag, tag_posts in tag_to_posts.items():
     if tag == 'all':
       rss_link = '/news.rss'
     else:
       rss_link = '/news/%s.rss' % tag
+
+    tag_json[tag] = [post.link() for post in tag_posts]
 
     entries = '\n'.join('''\
 <li><a href="%s">
@@ -1485,23 +1830,45 @@ def start():
 </head>
 <body>
 <style>
-.headfoot { margin: 3px }
 h2 { margin: .5em }
-      body { margin: 0; padding: 0; max-width: 35em;}
-li { list-style-type: none; margin: 0 }
-li a { display: block; padding: .75em }
-li a:link { text-decoration: none }
+body {
+   margin: 0;
+   padding: 0;
+}
+#content {
+  max-width: 550px;
+  margin-left: auto;
+  margin-right: auto;
+}
+#content li { list-style-type: none; margin: 0 }
+#content li a { display: block; padding: .75em }
+#content li a:link { text-decoration: none }
 .title:hover { text-decoration: underline }
-ul { margin: 0; padding: 0 }
-li:nth-child(odd) {
+#content ul { margin: 0; padding: 0 }
+#content li:nth-child(odd) {
   background: #EEE;
 }
 .date { font-size: 85%% ; color: black }
+.headfoot { margin: 3px }
+.headfoot ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+.headfoot li {
+  display: inline;
+  margin-left: 5px;
+  margin-right: 5px;
+}
 </style>
-%s<hr><h2>Posts :: %s (<a href="%s">rss</a>)</h2>
+%s<hr>
+<div id=content>
+<h2>Posts :: %s (<a href="%s">rss</a>)</h2>
+%s
 <ul>
 %s
 </ul>
+</div>
 <hr>%s
 </body>
 </html>''' % (
@@ -1512,6 +1879,7 @@ li:nth-child(odd) {
   links_partial(),
   tag,
   rss_link,
+  wrap_intro(INTROS.get(tag, "")),
   entries,
   links_partial()))
 
@@ -1528,6 +1896,59 @@ li:nth-child(odd) {
              config.full_filename(os.path.join(config.out, 'index.html')))
   os.symlink(config.full_filename(os.path.join(config.out, 'all.html')),
              config.full_filename(os.path.join(config.posts, 'index.html')))
+
+  with open(config.full_filename(
+      os.path.join(config.out, 'tags.json')), "w") as outf:
+    outf.write(json.dumps(tag_json))
+
+
+  count_topics = [(len(posts), tag, wrap_intro(INTROS.get(tag, "")))
+                  for (tag, posts) in tag_json.items()
+                  if not hidden_topic(tag)]
+  count_topics.sort(reverse=True)
+  topics_lis = ['<li><p><a href="/news/%s">%s</a> (%s)%s</li>' % (
+    topic, topic, count, intro) for (count, topic, intro) in count_topics]
+
+  with open(config.full_filename(
+      os.path.join(config.out, 'topics.html')), 'w') as outf:
+    outf.write('''
+<html>
+<head>
+  <title>Jeff :: Topics</title>
+  <meta name=viewport content="%s">
+</head>
+<body>
+<style>
+h2 { margin: .5em }
+body {
+   margin: 0;
+   padding: 0.5em;
+   max-width: 40em;
+}
+#content {
+  max-width: 550px;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+</head>
+<body>
+<h1>Topics</h1>
+<ul>
+%s
+</ul>
+</body>
+</html>
+    ''' % (
+      SNIPPETS['meta_viewport'],
+      '\n'.join(topics_lis),
+    ))
+
+def wrap_intro(intro):
+  if not intro:
+    return ""
+
+  return "<p>%s<p>" % (intro)
 
 def tidy_day(day):
   d = str(int(day))
