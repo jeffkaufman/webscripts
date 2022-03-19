@@ -5,12 +5,10 @@ tied to the layout of my site.
 
 Licensing: GNU GPL 2 or later
 
------
-Usage
------
+## Usage
 
-proc_schedule.py
-----------------
+### proc_schedule.py (obsolete)
+
 python proc_schedule.py view
  - shows a pretty table of upcoming events
 
@@ -24,8 +22,8 @@ proc_schedule.py ical
 In general add is just for convenience; if you need to edit you should
 open it up in a text editor
 
-makerss.py
-----------
+### makerss.py
+
 This was named when all it did was make an rss feed.  Now it also
 builds a large number of static html pages.
 
@@ -33,8 +31,7 @@ python makerss.py
  - updates rss feed
  - updates public_html/news/
 
-comment_requester_wsgi.py
--------------------------
+### comment_requester_wsgi.py (obsolete)
 
 Run this as wsgi.  It needs a facebook app created for it, and it will
 only pull comments from your user account.  To get a token use:
