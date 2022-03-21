@@ -362,10 +362,10 @@ def service_hn(token):
   return pull_hn_comments(url)
 
 def cacher(cache_only, fn, service, arg):
-    import memcache
+    from pymemcache.client.base import Client
     import time
 
-    mc = memcache.Client(['127.0.0.1:11211'], debug=0)
+    mc = Client('127.0.0.1:11211')
 
     key = "%s/%s" % (service, arg)
     value = mc.get(key)
