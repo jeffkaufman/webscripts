@@ -1313,7 +1313,7 @@ class Post:
 
     if is_amp:
       head.append(etree.Element(
-        'script', async='', src='https://cdn.ampproject.org/v0.js'))
+        'script', **{'async':'', 'src':'https://cdn.ampproject.org/v0.js'}))
 
     if is_amp:
       head.append(etree.Element('link', rel='canonical',
@@ -1556,8 +1556,9 @@ class Post:
           external_type = 'template'
           version = '0.2'
         ce_script = etree.Element(
-          'script', async='',
-          src='https://cdn.ampproject.org/v0/amp-%s-%s.js' % (external, version))
+          'script', **{
+            'async':'',
+            'src':'https://cdn.ampproject.org/v0/amp-%s-%s.js' % (external, version)})
         ce_script.set('custom-%s' % external_type, 'amp-%s' % external)
         ce_script.tail = '\n'
         head.append(ce_script)
