@@ -1606,7 +1606,11 @@ class Post:
   quote(html))
 
 def parse(s):
-  return lxml.html.fragment_fromstring(s, create_parent=False)
+  try:
+    return lxml.html.fragment_fromstring(s, create_parent=False)
+  except:
+    print(s)
+    raise
 
 def parsePosts():
   posts = []
