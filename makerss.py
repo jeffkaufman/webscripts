@@ -151,7 +151,7 @@ other things.  I play for contra dances, and enjoy figuring
 out how to play as many things simultaneously as I can.
 """,
 
-  "giving": """
+  "ea": """
 I'm interested in how I can most effectively turn my time and money
 into making the world better, and Julia and I have been into
 effective altruism since before it had a name. I'm currently earning
@@ -1059,6 +1059,10 @@ class Update:
 def hidden_topic(tag):
   return tag in ["all", "lwfeed"]
 
+TAG_RENAMING = {
+  "giving": "ea",
+}
+
 class Post:
   def __init__(self, slug, date, title, tags, element, openring):
     self.slug = slug
@@ -1066,7 +1070,8 @@ class Post:
     self.title = title
     self.published = config.notyet_token not in tags
     yeslw = config.nolw_token not in tags
-    tags = [x for x in tags
+
+    tags = [TAG_RENAMING.get(x, x) for x in tags
             if x != config.notyet_token and x != config.nolw_token]
     if yeslw:
       tags.append("lwfeed")
