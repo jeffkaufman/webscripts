@@ -146,18 +146,17 @@ having housemates.
 I grew up in a musical family, and learned guitar as a kid. Later, I
 taught myself piano, mandolin, bass, <a
 href="/p/introduction-to-heel-toe-drumming">foot drums</a>, whistle,
-brass, and
-other things.  I play for contra dances, and enjoy figuring
+brass, and other things.  I play for contra dances, and enjoy figuring
 out how to play as many things simultaneously as I can.
 """,
 
   "ea": """
 I'm interested in how I can most effectively turn my time and money
-into making the world better, and Julia and I have been into
-effective altruism since before it had a name. I'm currently earning
-to give, but have tried working on things that are more directly
-valuable and could see doing so again.
-""",
+into making the world better, and Julia and I have been into effective
+altruism since ~2009. I'm currently earning to give, but have tried
+working on things that are more directly valuable and could see doing
+so again.
+ """,
 
   "ideas": """
 I often have thoughts about how things could be better, and enjoy
