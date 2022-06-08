@@ -46,6 +46,10 @@ USE_DOUBLECLICK=True
 def relative_to_absolute(pathname):
   return os.path.join(os.path.dirname(__file__), pathname)
 
+def load_snippet(snippet_name):
+  return open(relative_to_absolute(
+    os.path.join("snippets", snippet_name))).read().strip()
+
 class Configuration:
   def __init__(self):
     self.site_url = 'https://www.jefftk.com'
@@ -106,8 +110,6 @@ INTROS = json.load(open(relative_to_absolute("intros.json")))
 BEST_POSTS = json.load(open(relative_to_absolute("best_posts.json")))
 
 SNIPPETS = {
-  'meta_viewport': 'width=device-width,minimum-scale=1,initial-scale=1',
-
   'google_analytics': r'''
 <script nonce="{{NONCE}}">
   (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
@@ -1090,7 +1092,7 @@ class Post:
     head.append(etree.Element(
       'meta', name='keywords', content=', '.join(self.tags)))
     head.append(etree.Element(
-      'meta', name='viewport', content=SNIPPETS['meta_viewport']))
+      'meta', name='viewport', content=load_snippet('meta_viewport.html')))
     head.append(etree.Element('meta', charset='utf-8'))
 
     if is_amp:
@@ -1660,7 +1662,7 @@ body {
 </body>
 </html>''' % (
   'Blog Posts' if tag == 'all' else 'Posts tagged %s' % tag,
-  SNIPPETS['meta_viewport'],
+  load_snippet('meta_viewport.html'),
   rss_link,
   SNIPPETS['google_analytics'],
   links_partial(),
@@ -1727,7 +1729,7 @@ body {
 </body>
 </html>
     ''' % (
-      SNIPPETS['meta_viewport'],
+      load_snippet('meta_viewport.html'),
       '\n'.join(topics_lis),
     ))
 
