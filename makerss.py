@@ -43,6 +43,9 @@ import json
 
 USE_DOUBLECLICK=True
 
+def relative_to_absolute(pathname):
+  return os.path.join(os.path.dirname(__file__), pathname)
+
 class Configuration:
   def __init__(self):
     self.site_url = 'https://www.jefftk.com'
@@ -98,101 +101,7 @@ class Configuration:
 
 config = Configuration()
 
-INTROS = {
-  "kids": """
-Julia and I have three kids, <a
-href="https://www.lilywise.com">Lily</a>, <a
-href="https://www.annawise.net">Anna</a>, and <a
-href="https://www.norawise.com">Nora</a>. As of early 2022, they are
-seven, five, and zero. As a parent, my goal is to show
-them how to do things, do for them what they can't do yet, and help
-them grow into the people they want to be.
-""",
-
-  "ling": """
-I majored in linguistics in college, along with computer science, and
-am still interested in language. I especially interested in changes in
-how language handles gender, and have been following the slow and
-steady growth of singular they.
-""",
-
-  "tech": """
-I'm a software engineer, currently working on ads at Google.  I'm
-especially interested in web browsers, web APIs, and improving
-privacy/security/efficiency by adding new capabilities to browsers.
-""",
-
-  "contra": """
-I've been contra dancing all my life, but got really interested in it
-in college.  I help organize our <a
-href="https://www.bidadance.org/">local dance</a> and <a href="https://www.beantownstomp.com/">dance weekend</a>, play
-for dances with my <a href="https://www.freeraisins.com/">two</a> <a
-href="https://www.kingfisherband.com/">bands</a>, lead <a href="https://www.jefftk.com/p/leading-an-open-band">open bands</a>,  maintain listings of
-<a href="https://www.trycontra.com/">local dances</a> and <a
-href="https://docs.google.com/spreadsheets/d/1fQq7pTtNVMYVRgOPbjNz2jnyw4RABGrQoplrSQntbn8/edit">weekends</a>,
-and used to <a href="https://www.jefftk.com/news/calling">call</a>.
-""",
-
-  "house": """
-Julia and I have a two family house in Somerville, where we live with
-our <a href="/news/kids">kids</a> and <a href="https://www.jefftk.com/p/shared-house-setup">housemates</a>.  Physically, the building was initially in
-pretty rough shape, and we've put a lot of work into fixing it up and
-making it the way we like it. Socially, we like having other people
-around, and I really value the 'socializing by default' that comes from
-having housemates.
-""",
-
-  "music": """
-I grew up in a musical family, and learned guitar as a kid. Later, I
-taught myself piano, mandolin, bass, <a
-href="/p/introduction-to-heel-toe-drumming">foot drums</a>, whistle,
-brass, and other things.  I play for contra dances, and enjoy figuring
-out how to play as many things simultaneously as I can.
-""",
-
-  "ea": """
-I'm interested in how I can most effectively turn my time and money
-into making the world better, and Julia and I have been into effective
-altruism since ~2009. I'm currently earning to give, but have tried
-working on things that are more directly valuable and could see doing
-so again.
- """,
-
-  "ideas": """
-I often have thoughts about how things could be better, and enjoy
-writing them up. Sometimes I end up building a prototype or
-otherwise making them happen, but most of them don't get past the
-idea stage.
-""",
-
-  "money": """
-A mix of economics, policy, and my personal experience.  I'm
-especially into financial transparency, writing up our personal
-finances and those of projects I've been involved in.
-""",
-
-  "covid-19": """
-The pandemic has been a huge part of our lives, displacing many
-things and shifting how we do many others.  A large fraction of my
-2020 and 2021 posts change back to the pandemic, even if I haven't
-categorized them that way here.
-""",
-
-  "food": """
-  Everyone needs to eat.  Looking through past posts, I see a slow
-  progression from a focus on frugality, to veganism (vegan <a
-  href="https://www.jefftk.com/p/shared-house-setup">housemates</a>),
-  to kids.
-""",
-  "": """
-""",
-  "": """
-""",
-  "": """
-""",
-  "": """
-""",
-}
+INTROS = json.load(open(relative_to_absolute("intros.json")))
 
 BEST_POSTS = [
   ('2021-11-03', 'Baby Sister Numbers', 5.0),
