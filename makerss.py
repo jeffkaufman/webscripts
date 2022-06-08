@@ -50,6 +50,9 @@ def load_snippet(snippet_name):
   return open(relative_to_absolute(
     os.path.join("snippets", snippet_name))).read().strip()
 
+def load_html_js_snippet(snippet_name):
+  return '<script nonce="{{NONCE}}" type="text/javascript">%s</script>' % load_snippet(snippet_name)
+
 class Configuration:
   def __init__(self):
     self.site_url = 'https://www.jefftk.com'
@@ -533,10 +536,10 @@ class Post:
       amp_external.add('analytics')
       body.append(parse(load_snippet('google_analytics_amp.html')))
     else:
-      head.append(parse(load_snippet('google_analytics_nonamp.html')))
+      head.append(parse(load_html_js_snippet('google_analytics_nonamp.js')))
 
     if not is_amp:
-      head.append(parse(load_snippet('hover_preview.html')))
+      head.append(parse(load_html_js_snippet('hover_preview.js')))
 
     # TODO: look into ld json schema for amp
 
@@ -640,7 +643,7 @@ class Post:
 %s
 </script>
 </div>''' % (
-  load_snippet('comment_script.html'),
+  load_html_js_snippet('comment_script.js'),
   '\n'.join(
     "pullComments('/wsgi/json-comments/%s/%s', '%s');\n" % (
       service_abbr, service_tag, service_name)
@@ -1052,7 +1055,7 @@ body {
   'Blog Posts' if tag == 'all' else 'Posts tagged %s' % tag,
   load_snippet('meta_viewport.html'),
   rss_link,
-  load_snippet('google_analytics.html'),
+  load_html_js_snippet('google_analytics.js'),
   links_partial(),
   tag,
   rss_link,

@@ -1,4 +1,3 @@
-<script nonce="{{NONCE}}" type="text/javascript">
 var last_visit = document.cookie.replace(/(?:(?:^|.*;\s*)jtk_last_visit\s*\=\s*([^;]*).*$)|^.*$/, "$1");
 var current_time = new Date().getTime();
 var one_year_gmt_str = new Date(current_time + 31536000000).toGMTString();
@@ -309,4 +308,3 @@ function pullComments(wsgiUrl, serviceName) {
     });
   });
 }
-</script>

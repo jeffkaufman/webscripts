@@ -1,4 +1,3 @@
-<script nonce="{{NONCE}}" type="text/javascript">
 window.addEventListener("load", () => {
   var pifr = document.getElementById("preview-iframe");
   document.querySelectorAll("a[href^='/p/']").forEach(a => {
@@ -81,4 +80,3 @@ window.addEventListener("load", () => {
     nextPreviewClientY = null;
   }
 });
-</script>
