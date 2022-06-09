@@ -433,8 +433,7 @@ class Post:
     head.append(etree.Element(
       'meta', name='description', content=no_tags_no_ws[:400]))
     head.append(etree.Element(
-      'meta', name='keywords', content=', '.join(
-        tag for tag in self.tags if not hidden_topic(tag))))
+      'meta', name='keywords', content=', '.join(self.tags)))
     head.append(etree.Element(
       'meta', name='viewport', content=load_snippet('meta_viewport.html')))
     head.append(etree.Element('meta', charset='utf-8'))
@@ -491,7 +490,7 @@ class Post:
         ', '.join(
           '<i><a href="/news/%s">%s</a></i>' % (tag, tag)
           for tag in self.tags
-          if not hidden_topic(tag)))
+          if tag != "lwfeed"))
 
     content.append(parse('''<table id="title-date-tags">
     <tr><td valign="top" rowspan="2"><h3><a href="%s">%s</a></h3></td>
@@ -635,7 +634,7 @@ class Post:
   quote(self.title),
   config.full_url(self.link()),
   '\n  '.join('<category>%s</category>' % tag
-              for tag in sorted(self.tags) if not hidden_topic(tag)),
+            for tag in sorted(self.tags)),
   self.day, self.short_month, self.year,
   quote(html))
 
