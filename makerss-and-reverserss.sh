@@ -9,6 +9,9 @@ RSS_SOURCES="
   -s https://www.annawise.net/posts.rss
   -s https://cullenokeefe.com/blog?format=rss"
 
+/home/jefftk/code/webscripts/makerss.py && echo "rss made" && \
+  /home/jefftk/bin/reverserss.py && echo "done"
+
 /home/jefftk/code/openring/openring \
   $RSS_SOURCES \
   < /home/jefftk/code/openring/in-small.html \
@@ -18,6 +21,4 @@ RSS_SOURCES="
   -n 100 -p 5 -l 500 $RSS_SOURCES \
   < /home/jefftk/code/openring/in-big.html \
   | sed 's~https://danluu.com/post/atom/index.xml~https://danluu.com~g' \
-  > /home/jefftk/jtk/ring.html && echo "feeds fetched" && \
-/home/jefftk/bin/makerss.py && echo "rss made" && \
-/home/jefftk/bin/reverserss.py && echo "done"
+  > /home/jefftk/jtk/ring.html
