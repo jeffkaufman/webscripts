@@ -390,7 +390,7 @@ class Post:
 </div>''' % (link, self.month, tidy_day(self.day), self.year,
              link, self.title, html)
 
-  def html(self, is_amp):
+  def html(self):
     element = deepcopy(self.element)
 
     for tt in element.findall('.//tt'):
@@ -399,78 +399,30 @@ class Post:
     if not self.published:
       element.insert(0, parse('<p><i>draft post</i></p>'))
 
-    amp_styles = set()
-    amp_external = set()
-
-    if is_amp:
-      for styled in element.findall('.//*[@style]'):
-        style = styled.attrib.pop('style')
-        auto_id = 'inline-style-%s' % abs(hash(style))
-        amp_styles.add('#%s {%s}' % (auto_id, style))
-        assert not styled.get('id')
-        styled.set('id', auto_id)
-
-      for style_block in element.findall('.//style'):
-        amp_styles.add(style_block.text)
-        style_block.getparent().remove(style_block)
-
-      for img in element.findall('.//img'):
-        img.tag = 'amp-img'
-        img.set('layout', 'responsive')
-
-        try:
-          border = img.attrib.pop('border')
-        except KeyError:
-          pass
-
-      for iframe in element.findall('.//iframe'):
-        if 'youtube' in iframe.get('src'):
-          amp_external.add('youtube')
-          iframe.tag = 'amp-youtube'
-          videoid, = re.findall('/embed/([^?]*)', iframe.get('src'))
-          attrib = iframe.attrib
-          width, height = attrib['width'], attrib['height']
-          attrib.clear()
-          attrib['width'], attrib['height'] = width, height
-          attrib['layout'] = 'responsive'
-          attrib['data-videoid'] = videoid
-        else:
-          amp_external.add('iframe')
-          iframe.tag = 'amp-iframe'
-
-          try:
-            placeholder_img = iframe.attrib.pop('data-placeholder')
-            iframe.append(etree.Element(
-              'amp-img', placeholder='', layout='fill', src=placeholder_img))
-          except KeyError:
-            pass
-
-          iframe.set('sandbox', 'allow-scripts allow-same-origin')
-    else:
-      # make youtube responsive
-      for iframe in element.findall('.//iframe'):
-        if 'youtube' in iframe.get('src'):
-          width, height = iframe.attrib['width'], iframe.attrib['height']
-          del iframe.attrib['width']
-          del iframe.attrib['height']
-          div = etree.Element('div')
-          div.attrib['style'] = (
-            'position: relative;'
-            'padding-bottom: %.2f%%;'
-            'height: 0;'
-            'overflow: hidden;'
-            'max-width: 100%%;') % (100 * float(height) / float(width))
-          iframe.attrib['style'] = (
-            'position: absolute;'
-            'top: 0;'
-            'left: 0;'
-            'width: 100%;'
-            'height: 100%;')
-          parent = iframe.getparent()
-          iframe_index = list(parent).index(iframe)
-          parent.remove(iframe);
-          parent.insert(iframe_index, div)
-          div.append(iframe)
+    # make youtube responsive
+    for iframe in element.findall('.//iframe'):
+      if 'youtube' in iframe.get('src'):
+        width, height = iframe.attrib['width'], iframe.attrib['height']
+        del iframe.attrib['width']
+        del iframe.attrib['height']
+        div = etree.Element('div')
+        div.attrib['style'] = (
+          'position: relative;'
+          'padding-bottom: %.2f%%;'
+          'height: 0;'
+          'overflow: hidden;'
+          'max-width: 100%%;') % (100 * float(height) / float(width))
+        iframe.attrib['style'] = (
+          'position: absolute;'
+          'top: 0;'
+          'left: 0;'
+          'width: 100%;'
+          'height: 100%;')
+        parent = iframe.getparent()
+        iframe_index = list(parent).index(iframe)
+        parent.remove(iframe);
+        parent.insert(iframe_index, div)
+        div.append(iframe)
 
     no_tags_no_ws = re.sub('<[^>]*>', '',
                            re.sub('\s+',' ',
@@ -486,30 +438,14 @@ class Post:
       'meta', name='viewport', content=load_snippet('meta_viewport.html')))
     head.append(etree.Element('meta', charset='utf-8'))
 
-    if is_amp:
-      head.append(etree.Element(
-        'script', **{'async':'', 'src':'https://cdn.ampproject.org/v0.js'}))
-
-    if is_amp:
-      head.append(etree.Element('link', rel='canonical',
-                                href=config.relative_url(self.link())))
-    else:
-      head.append(etree.Element('link', rel='amphtml', href='%s.amp' % (
-        config.relative_url(self.link()))))
-
-    if is_amp:
-      head.append(parse('''\
-<script nonce="{{NONCE}}" async custom-element="amp-ad"
-   src="https://cdn.ampproject.org/v0/amp-ad-0.1.js"></script>'''))
-    else:
-      head.append(parse('''\
+    head.append(parse('''\
 <script nonce="{{NONCE}}" async='async' src='https://www.googletagservices.com/tag/js/gpt.js'></script>'''))
-      head.append(parse('''\
+    head.append(parse('''\
 <script nonce="{{NONCE}}">
   var googletag = googletag || {};
   googletag.cmd = googletag.cmd || [];
 </script>'''))
-      head.append(parse('''\
+    head.append(parse('''\
 <script nonce="{{NONCE}}">
   googletag.cmd.push(function() {
       googletag.pubads().setForceSafeFrame(true).setSafeFrameConfig({useUniqueDomain: true});
@@ -532,26 +468,11 @@ class Post:
 
     body = etree.Element('body')
 
-    if is_amp:
-      amp_external.add('analytics')
-      body.append(parse(load_snippet('google_analytics_amp.html')))
-    else:
-      head.append(parse(load_html_js_snippet('google_analytics_nonamp.js')))
+    head.append(parse(load_html_js_snippet('google_analytics.js')))
 
-    if not is_amp:
-      head.append(parse(load_html_js_snippet('hover_preview.js')))
+    head.append(parse(load_html_js_snippet('hover_preview.js')))
 
-    # TODO: look into ld json schema for amp
-
-    if is_amp:
-      head.append(parse(load_snippet('amp_boilerplate.html')))
-      head.append(parse(load_snippet('amp_noscript_boilerplate.html')))
-
-    head.append(parse(
-      '<style%s>%s%s</style>' % (
-        ' amp-custom=""' if is_amp else '',
-        load_snippet('post.css'),
-        '\n'.join(sorted(amp_styles)))))
+    head.append(parse('<style>%s</style>' % load_snippet('post.css')))
 
     wrapper = etree.Element('div', id='wrapper')
 
@@ -565,12 +486,11 @@ class Post:
 
     tag_block = ''
     if self.tags:
-      tag_block = '<span>%s</span>&nbsp;&nbsp;<small><tt>%s</tt></small>' % (
+      tag_block = '<span>%s</span>' % (
         ', '.join(
           '<i><a href="/news/%s">%s</a></i>' % (tag, tag)
           for tag in self.tags
-          if tag != "lwfeed"),
-        '[amp]' if is_amp else '[html]')
+          if tag != "lwfeed"))
 
     content.append(parse('''<table id="title-date-tags">
     <tr><td valign="top" rowspan="2"><h3><a href="%s">%s</a></h3></td>
@@ -610,33 +530,7 @@ class Post:
       content.append(parse('<p>Comment via: %s</p>\n' % (
         ', '.join('<a href="%s">%s</a>' % (service_link, service_name)
                   for service_name, _, service_link, _ in self.services))))
-      if is_amp:
-        comment_thread = etree.Element('div')
-        comment_thread.set('class', 'comment-thread')
-        comments = etree.Element('div', id='comments')
-        comments.append(comment_thread)
-        content.append(comments)
-
-        amp_external.add('list')
-        amp_external.add('mustache')
-
-        comment_thread.append(parse('''
-<amp-list width=auto height=500 layout="fixed-height" src=%s>
-  <template type="amp-mustache">
-    <div class=comment id="{{anchor}}">
-      <a dontescapethis="{{source_link}}">{{{author}}}</a> ({{service}})
-      <a dontescapethis="#{{anchor}}" class=commentlink></a>
-      <p>{{{text}}}
-    </div>
-  </template>
-  <div overflow>See more</div>
-</amp-list>
-''' % ('/wsgi/amp-json-comments?%s' % (
-  '&'.join('%s=%s' % (service_abbr, service_token)
-           for _, service_abbr, _, service_token in self.services)))))
-
-      else:
-        content.append(parse('''\
+      content.append(parse('''\
 <div id="comments">
 %s
 <script nonce="{{NONCE}}" type="text/javascript">
@@ -655,27 +549,8 @@ class Post:
     wrapper.append(self.openring)
 
     wrapper.append(parse('<p>'))
-    if is_amp:
-      if USE_DOUBLECLICK:
-        wrapper.append(parse('''\
-<p>
-<amp-ad width=300 height=250
-  type="doubleclick"
-  data-slot="/21707489405/post_bottom_square">
-</amp-ad>'''))
-      else:
-        wrapper.append(parse('''\
-<p>
-<amp-ad width="100vw" height="320" type="adsense"
-  data-ad-client="ca-pub-0341874384016383"
-  data-ad-slot="4122621225"
-  data-auto-format="rspv"
-  data-full-width>
-    <div overflow></div>
-</amp-ad>'''))
 
-    else:
-      wrapper.append(parse('''\
+    wrapper.append(parse('''\
 <div id="ad-wrapper">
 <div id='div-gpt-ad-1524882696974-0'>
   <script nonce="{{NONCE}}">
@@ -709,7 +584,7 @@ class Post:
     wrapper.append(parse(
       '<div id="right-column"><div id="top-posts">%s</div>%s</div>' % (
         best_posts_html,
-        '' if is_amp else preview_iframe_html)))
+        preview_iframe_html)))
 
 
     wrapper.append(etree.Element('hr'))
@@ -718,25 +593,8 @@ class Post:
     body.append(wrapper)
 
     page = etree.Element('html', lang='en')
-    if is_amp:
-      page.set('amp', 'amp')
     page.append(head)
     page.append(body)
-
-    if is_amp:
-      for external in amp_external:
-        external_type = 'element'
-        version = '0.1'
-        if external == 'mustache':
-          external_type = 'template'
-          version = '0.2'
-        ce_script = etree.Element(
-          'script', **{
-            'async':'',
-            'src':'https://cdn.ampproject.org/v0/amp-%s-%s.js' % (external, version)})
-        ce_script.set('custom-%s' % external_type, 'amp-%s' % external)
-        ce_script.tail = '\n'
-        head.append(ce_script)
 
     return '<!doctype html>\n%s' % etree.tostring(
       page, method='html', pretty_print=True).decode('utf-8').replace(
@@ -941,9 +799,7 @@ def start():
     fname_slug = config.full_filename(
       os.path.join(config.new(config.out), post.slug)) + '.html'
     with open(fname_base + '.html', 'w') as outf:
-      outf.write(post.html(is_amp=False))
-    with open(fname_base + '.amp.html', 'w') as outf:
-      outf.write(post.html(is_amp=True))
+      outf.write(post.html())
     shutil.copy(fname_base + '.html', fname_slug)
     st = os.stat(fname_slug)
     os.chmod(fname_slug, st.st_mode & (stat.S_IRUSR | stat.S_IWUSR))
