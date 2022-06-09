@@ -6,11 +6,17 @@ use std::io::{self, BufRead};
 const SITE_DIR: &str = "/home/jefftk/jtk";
 const IN_HTML: &str = "news_raw.html";
 
+fn handle_post(slug: &str, date: &str, title: &str, tags: &str) {
+    println!("would handle post: {} {} {} {}", slug, date, title, tags);
+}
+
 fn parse_posts() {
     enum State {
         Before,
         WantSlug,
         WantOpenDiv,
+        WantTitle,
+        WantTags,
         WantCloseDiv,
     }
 
@@ -19,11 +25,16 @@ fn parse_posts() {
 
     let mut state = State::Before;
     let mut post: Vec<String> = Vec::new();
+    let mut tag_lines: Vec<String> = Vec::new();
 
     let slug_re = Regex::new("  <a name=\"([^\"]*)\"></a><h3>([^:]*):</h3>").unwrap();
+    let title_re = Regex::new("  <h3>([^<]*)</h3>").unwrap();
+    let tag_re = Regex::new("  <h4>Tags: ([^<]*)</h4>").unwrap();
 
     let mut slug = String::new();
     let mut date = String::new();
+    let mut title = String::new();
+    let mut tags = String::new();
 
     for line in io::BufReader::new(file).lines() {
         let line = line.expect("Failed to read line");
@@ -43,12 +54,26 @@ fn parse_posts() {
             }
             State::WantOpenDiv => {
                 if line.eq("  <div class=\"pt\">") {
+                    state = State::WantTitle;
+                }
+            }
+            State::WantTitle => {
+                if let Some(captures) = title_re.captures(&line) {
+                    title = (&captures[1]).to_string();
+                    state = State::WantTags;
+                }
+            }
+            State::WantTags => {
+                tag_lines.push(line);
+                if let Some(captures) = tag_re.captures(&tag_lines.join(" ")) {
+                    tags = (&captures[1]).to_string();
+                    tag_lines.clear();
                     state = State::WantCloseDiv;
                 }
             }
             State::WantCloseDiv => {
                 if line.eq("  </div>") {
-                    println!("would handle post: {} {}\n\n{}\n\n", slug, date);
+                    handle_post(&slug, &date, &title, &tags);
                     post.clear();
                     state = State::WantSlug;
                 } else {
