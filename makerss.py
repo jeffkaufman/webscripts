@@ -41,7 +41,7 @@ from copy import deepcopy
 from collections import defaultdict
 import json
 
-USE_DOUBLECLICK=True
+SHOW_ADS=False
 
 def relative_to_absolute(pathname):
   return os.path.join(os.path.dirname(__file__), pathname)
@@ -439,14 +439,15 @@ class Post:
       'meta', name='viewport', content=load_snippet('meta_viewport.html')))
     head.append(etree.Element('meta', charset='utf-8'))
 
-    head.append(parse('''\
+    if SHOW_ADS:
+      head.append(parse('''\
 <script nonce="{{NONCE}}" async='async' src='https://www.googletagservices.com/tag/js/gpt.js'></script>'''))
-    head.append(parse('''\
+      head.append(parse('''\
 <script nonce="{{NONCE}}">
   var googletag = googletag || {};
   googletag.cmd = googletag.cmd || [];
 </script>'''))
-    head.append(parse('''\
+      head.append(parse('''\
 <script nonce="{{NONCE}}">
   googletag.cmd.push(function() {
       googletag.pubads().setForceSafeFrame(true).setSafeFrameConfig({useUniqueDomain: true});
@@ -551,7 +552,8 @@ class Post:
 
     wrapper.append(parse('<p>'))
 
-    wrapper.append(parse('''\
+    if SHOW_ADS:
+      wrapper.append(parse('''\
 <div id="ad-wrapper">
 <div id='div-gpt-ad-1524882696974-0'>
   <script nonce="{{NONCE}}">
