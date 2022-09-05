@@ -35,7 +35,7 @@ for line in lines:
   if date_s == 'date':
     continue
 
-  month, day, year = date_s.split('/')
+  year, month, day = date_s.split('-')
   ts = to_epoch(year, month, day)
   vals.append((ts, parse_money(income_s), parse_money(profit_s)))
 
