@@ -879,6 +879,9 @@ body {
   margin-left: auto;
   margin-right: auto;
 }
+#content p {
+  margin: 5px;
+}
 #content li { list-style-type: none; margin: 0 }
 #content li a { display: block; padding: .75em }
 #content li a:link { text-decoration: none }
