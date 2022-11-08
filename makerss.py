@@ -298,6 +298,10 @@ class Post:
         services.append((6, 'hacker news', 'hn',
                          'https://news.ycombinator.com/item?id=%s' % token,
                          token))
+      elif service == 'm':
+        services.append((7, 'mastodon', 'm',
+                         'https://schelling.pt/@jefftk/%s' % token,
+                         token))
 
     # sort by and then strip off priorities
     self.services = [x[1:] for x in sorted(services)]
