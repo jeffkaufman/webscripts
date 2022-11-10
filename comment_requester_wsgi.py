@@ -375,8 +375,8 @@ def service_m(token):
         parent_id = escape(child["in_reply_to_id"])  # temporary
 
         comments[comment_id] = [
-            username, permalink, comment_id, timestamp,
-            comment_html, children, parent_id]
+            username, permalink, comment_id, comment_html,
+            timestamp, children, parent_id]
 
     return gather_children(comments, token)
 
