@@ -351,6 +351,10 @@ class HTMLToTextConverter(HTMLParser):
     def handle_data(self, data):
         self.text += data
 
+    def handle_endtag(self, tag):
+        if tag == "p":
+            self.text += " "
+
 def strip_tags(untrusted_html):
     converter = HTMLToTextConverter()
     converter.feed(untrusted_html)
@@ -590,4 +594,6 @@ def server():
     make_server('',8010,application).serve_forever()
 
 if __name__ == "__main__":
-    server()
+    #server()
+    import pprint
+    pprint.pprint(service_m("109320146331587306"))
