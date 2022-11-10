@@ -358,7 +358,7 @@ class HTMLToTextConverter(HTMLParser):
 def strip_tags(untrusted_html):
     converter = HTMLToTextConverter()
     converter.feed(untrusted_html)
-    return converter.text
+    return converter.text.strip()
 
 def service_m(token):
     if not re.match('^[0-9]+$', token):
