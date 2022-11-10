@@ -12,7 +12,6 @@ import dateutil.parser
 import http.cookies
 import subprocess
 import base64
-from xml.dom import minidom
 from collections import defaultdict
 import socket
 import html
@@ -43,6 +42,9 @@ def slurp(url, data=None, headers={}, timeout=60):
         identifier = "/u/cbr"
     elif "lesswrong" in url:
         identifier = "/user/jkaufman"
+    elif "schelling.pt" in url:
+        identifier = "@jefftk@schelling.pt"
+
     if 'User-Agent' not in headers:
         headers['User-Agent'] = '%s bot by %s (www.jefftk.com)' % (botname, identifier)
 
@@ -296,6 +298,19 @@ def pull_reddit_style_rss(url):
              ts(item))
             for item in items]
 
+def gather_children(comments_with_parent_ids, root_id=None):
+    root = []
+    for comment_id, comment in list(comments_with_parent_ids.items()):
+        parent_id = comment[-1]
+        if parent_id and parent_id != root_id:
+            parent = comments_with_parent_ids[parent_id][-2]  # -2 is children
+        else:
+            parent = root
+        parent.append(comment)
+    for comment in list(comments_with_parent_ids.values()):
+        del comment[-1]  # remove temporary parent_id
+    return root
+
 def lw_style_service(token, service, domain):
     if token.startswith('posts/'):
         token = token[len('posts/'):]
@@ -328,18 +343,42 @@ def lw_style_service(token, service, domain):
             epoch(comment["postedAt"]),
             [],
             comment["parentCommentId"]]
-    root = []
-    for comment_id, comment in list(comments.items()):
-        parent_id = comment[-1]
-        if parent_id:
-            parent = comments[parent_id][-2]  # -2 is children
-        else:
-            parent = root
-        parent.append(comment)
-    for comment in list(comments.values()):
-        del comment[-1]  # remove temporary parent_id
-    return root
 
+    return gather_children(comments)
+
+class HTMLToTextConverter(HTMLParser):
+    text = ""
+    def handle_data(self, data):
+        self.text += data
+
+def strip_tags(untrusted_html):
+    converter = HTMLToTextConverter()
+    converter.feed(untrusted_html)
+    return converter.text
+
+def service_m(token):
+    if not re.match('^[0-9]+$', token):
+        return []
+
+    url = "https://schelling.pt/api/v1/statuses/%s/context" % token
+    response = json.loads(slurp(url))
+
+    comments = {} # id -> comment array
+
+    for child in response["descendants"]:
+        username = escape(child["account"]["display_name"])
+        permalink = escape(child["url"])
+        comment_id = escape(child["id"])
+        timestamp = epoch(child["created_at"])
+        comment_html = strip_tags(child["content"])
+        children = []
+        parent_id = escape(child["in_reply_to_id"])  # temporary
+
+        comments[comment_id] = [
+            username, permalink, comment_id, timestamp,
+            comment_html, children, parent_id]
+
+    return gather_children(comments, token)
 
 def service_lw(token):
     return lw_style_service(token, 'lw', 'https://www.lesswrong.com')
@@ -465,6 +504,7 @@ SERVICE_FNS = {
     'lw': service_lw,
     'ea': service_ea,
     'r': service_r,
+    'm': service_m,
     'hn': service_hn}
 
 # actually respond to the request
