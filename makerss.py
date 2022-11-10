@@ -280,6 +280,8 @@ class Post:
           self.fb_link = fb_link
         services.append((2, 'facebook', 'fb', fb_link, token))
       elif service == 'lw':
+        if not token.startswith("posts/") and not token.startswith("lw/"):
+          token = "posts/%s" % token
         lw_link = 'https://lesswrong.com/%s' % token
         services.append((3, 'lesswrong', 'lw', lw_link, token))
       elif service == 'ea':
