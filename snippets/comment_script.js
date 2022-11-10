@@ -223,6 +223,12 @@ function display_posts_helper(comments) {
     var children = comments[i][5];
     var service = comments[i][6];
 
+    if (message.includes('https://') && !message.includes('<')) {
+      message = message.replace(
+        /https:\/\/([^ ,!;:]*[^.,!;:])/g,
+        '<a href="https://$1">$1</a>');
+    }
+
     h += "<div class=comment id='" + anchor + "' ts=" + ts + ">";
     h += "<a href='" + user_link + "'>" + name + "</a> (";
     h += friendly_ts(ts) + ", via " +  service_abbr(service) + "):";
