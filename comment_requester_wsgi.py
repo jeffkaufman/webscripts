@@ -360,11 +360,11 @@ def strip_tags(untrusted_html):
     converter.feed(untrusted_html)
     return converter.text.strip()
 
-def service_m(token):
+def m_style_service(token, host):
     if not re.match('^[0-9]+$', token):
         return []
 
-    url = "https://schelling.pt/api/v1/statuses/%s/context" % token
+    url = "%s/api/v1/statuses/%s/context" % (host, token)
     response = json.loads(slurp(url))
 
     comments = {} # id -> comment array
@@ -383,6 +383,12 @@ def service_m(token):
             timestamp, children, parent_id]
 
     return gather_children(comments, token)
+
+def service_m1(token):
+    return m_style_service(token, 'https://schelling.pt')
+
+def service_m(token):
+    return m_style_service(token, 'https://mastodon.mit.edu')
 
 def service_lw(token):
     return lw_style_service(token, 'lw', 'https://www.lesswrong.com')
@@ -508,6 +514,7 @@ SERVICE_FNS = {
     'lw': service_lw,
     'ea': service_ea,
     'r': service_r,
+    'm1': service_m1,
     'm': service_m,
     'hn': service_hn}
 
