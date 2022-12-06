@@ -440,8 +440,8 @@ class Post:
                                          self.bare_html(element)))).strip()
 
     head = etree.Element('head')
-    head.append(etree.Element(
-      'meta', name='description', content=no_tags_no_ws[:400]))
+    description = content=no_tags_no_ws[:400]
+    head.append(etree.Element('meta', name='description', content=description))
     head.append(etree.Element(
       'meta', name='keywords', content=', '.join(
         tag for tag in self.tags if not hidden_topic(tag))))
@@ -605,7 +605,21 @@ class Post:
 
     body.append(wrapper)
 
-    page = etree.Element('html', lang='en')
+    image_link = None
+    for a_img in element.findall('.//a[img]'):
+      if not image_link or 'highlight' in a_img.attrib:
+        image_link = "%s%s" % (config.site_url, a_img.get('href'))
+    if image_link is None:
+      image_link = "%s/jefftk-glyph-framed.jpg" % config.site_url
+
+    head.append(etree.Element('meta', property="og:title", content=self.title))
+    head.append(etree.Element('meta', property="og:type", content="article"))
+    head.append(etree.Element('meta', property="og:image", content=image_link))
+    head.append(etree.Element('meta', property="og:url", content="%s/%s" % (
+      config.site_url, self.link())))
+    head.append(etree.Element('meta', property="og:description", content=description))
+
+    page = etree.Element('html', lang='en', prefix="og: https://ogp.me/ns#")
     page.append(head)
     page.append(body)
 
