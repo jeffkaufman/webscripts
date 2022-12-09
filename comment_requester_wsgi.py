@@ -370,7 +370,8 @@ def m_style_service(token, host):
     comments = {} # id -> comment array
 
     for child in response["descendants"]:
-        username = escape(child["account"]["display_name"])
+        username = escape(child["account"]["display_name"] or
+                          child["account"]["username"])
         permalink = escape(child["url"])
         comment_id = escape(child["id"])
         timestamp = epoch(child["created_at"])
