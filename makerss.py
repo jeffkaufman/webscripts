@@ -330,7 +330,8 @@ class Post:
           parent.insert(parent.index(possible_update),
                         etree.Element('a', name=update.anchor))
 
-    for img in element.findall('.//img'):
+    for img_parent in element.findall('.//*[img]'):
+      img = img_parent.find('img')
       src = img.get('src')
       if src and src.startswith('/'):
         src_ondisk = config.full_filename(src[1:])
@@ -342,9 +343,13 @@ class Post:
           img.set('width', str(width))
           img.set('height', str(height))
           max_width = 100.0
+          max_height = max_width * height / width
           img.set('class', 'mobile-fullwidth')
           img.set('style', 'max-width:%.1fvw; max-height:%.1fvw;' %
-                  (max_width, max_width * height / width))
+                  (max_width, max_height))
+          img_parent.append(etree.Element(
+            'div', attrib={"class": "image-vertical-spacer"},
+            style="height:min(%.1fvw, %spx)" % (max_height, height)))
 
         if not img.get('srcset'):
           fname, ext = src.rsplit('.', 1)
