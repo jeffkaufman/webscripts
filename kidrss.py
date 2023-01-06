@@ -31,8 +31,9 @@ for fname in glob(os.path.join(indir, "*.html")):
   with open(fname) as inf:
     contents = inf.read()
     if "<div id=blogpost>" in contents:
-      title, = re.findall("<h1>([^<]*)</h1>", contents)
-      date, = re.findall("<h2 id=date>([^<]*)</h2>", contents)
+      title, = re.findall("<h1>(?:<span>)?([^<]*)(?:</span>)?</h1>", contents)
+      date, = re.findall("<h2 id=date>(?:<span>)?([^<]*)(?:</span>)?</h2>",
+                         contents)
 
       post = contents[
         contents.index("<div id=blogpost>") + len("<div id=blogpost>"):
