@@ -1,13 +1,13 @@
 #!/bin/bash
 RSS_SOURCES="
-  -s https://apenwarr.ca/log/rss.php
-  -s https://www.benkuhn.net/index.xml
-  -s https://danluu.com/post/atom.xml
   -s https://juliawise.net/feed/
-  -s https://sideways-view.com/feed/
   -s https://www.lilywise.com/posts.rss
   -s https://www.annawise.net/posts.rss
-  -s https://cullenokeefe.com/blog?format=rss"
+  -s https://www.benkuhn.net/index.xml
+  -s https://danluu.com/post/atom.xml
+  -s https://www.lincolnquirk.com/feed.xml
+  -s https://sideways-view.com/feed/
+  -s https://www.cold-takes.com/rss/"
 
 /home/jefftk/code/webscripts/makerss.py && echo "rss made" && \
   /home/jefftk/bin/reverserss.py && echo "done"
