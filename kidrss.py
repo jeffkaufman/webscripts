@@ -47,7 +47,7 @@ for fname in glob(os.path.join(indir, "*.html")):
 
 index = []
 for date, short_fname, title, post in reversed(sorted(posts)):
-  index.append('<li><a href="/%s">%s</a>' % (short_fname, title))
+  index.append('<li>%s: <a href="/%s">%s</a>' % (date, short_fname, title))
 
 index_fname = os.path.join(indir, "index.html")
 index_start_comment = "<!--BEGIN AUTOMATIC INDEX-->\n"
