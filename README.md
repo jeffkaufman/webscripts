@@ -133,7 +133,8 @@ sudo service uwsgi-echo-02 start
 sudo service uwsgi-shrubgrazer start
 ```
 
-1. At VPS provider open up 443 for HTTPS at firewall
+1. At VPS provider open up TCP 443 for HTTPS and UDP 60000-61000 for
+   mosh at firewall
 
 1. verify everything works with /etc/hosts overrides
 
