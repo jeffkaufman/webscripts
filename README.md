@@ -76,7 +76,12 @@ ssh-keygen -t ed25519 -C jeff@jefftk.com
 # Add contents of remote `~/.ssh/id_ed25519.pub` to old server's
 # `~/.ssh/authorized_keys`
 
+Under screen:
+
 rsync -rta www.jefftk.com:/home/jefftk /home/jefftk
+
+sudo apt-get update
+sudo apt-get upgrade
 
 sudo apt install emacs nginx sox ffmpeg flake8 g++ gcc git icdiff \
      imagemagick lame mosh make nginx-extras python3 screen tmux uwsgi \
@@ -100,8 +105,7 @@ cd
 
 scp www.jefftk.com:/etc/nginx/nginx.conf .
 sudo mv nginx.conf /etc/nginx/nginx.conf
-sudo mv  /etc/nginx/nginx.conf /etc/nginx/conf.d/
-scp www.jefftk.com:/usr/local/nginx/conf/nginx.redirects.conf .
+scp www.jefftk.com:/etc/nginx/nginx.redirects.conf .
 sudo mv nginx.redirects.conf /etc/nginx/
 # on old server: sudo tar -czvf le.tgz /etc/letsencrypt/
 scp www.jefftk.com:le.tgz .
@@ -118,6 +122,7 @@ sudo systemctl enable uwsgi-comments
 sudo systemctl enable uwsgi-simplechat
 sudo systemctl enable uwsgi-echo-01
 sudo systemctl enable uwsgi-echo-02
+sudo systemctl enable uwsgi-shrubgrazer
 
 sudo systemctl enable memcached
 sudo service memcached start
@@ -125,7 +130,10 @@ sudo service uwsgi-comments start
 sudo service uwsgi-simplechat start
 sudo service uwsgi-echo-01 start
 sudo service uwsgi-echo-02 start
+sudo service uwsgi-shrubgrazer start
 ```
+
+1. At VPS provider open up 443 for HTTPS at firewall
 
 1. verify everything works with /etc/hosts overrides
 
