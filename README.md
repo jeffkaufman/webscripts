@@ -90,6 +90,7 @@ sudo apt install emacs nginx sox ffmpeg flake8 g++ gcc git icdiff \
 
 sudo python3 -m pip install python-dateutil
 sudo python3 -m pip install pymemcache
+python3 -m pip install lxml
 
 cd /var
 sudo mkdir www-aw www-bd www-fc www-bts www-fr www-kf www-lw \
