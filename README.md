@@ -95,6 +95,7 @@ cd /var
 sudo mkdir www-aw www-bd www-fc www-bts www-fr www-kf www-lw \
    www-nh www-nw www-oc www-rs www-test www-tc
 sudo chown -R jefftk www*
+sudo chown ugo+rx /home/jefftk
 
 for x in www www-aw www-bd www-fc www-bts www-fr www-kf www-lw \
      www-nh www-nw www-oc www-rs www-test www-tc ; do
