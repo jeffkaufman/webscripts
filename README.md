@@ -86,7 +86,7 @@ sudo apt-get upgrade
 sudo apt install emacs nginx sox ffmpeg flake8 g++ gcc git icdiff \
      imagemagick lame mosh make nginx-extras python3 screen tmux uwsgi \
      uwsgi-plugin-python3 whois wget certbot python3-pip memcached \
-     libimage-exiftool-perl
+     libimage-exiftool-perl python3-certbot-nginx
 
 sudo python3 -m pip install python-dateutil
 sudo python3 -m pip install pymemcache
@@ -134,6 +134,8 @@ sudo service uwsgi-echo-01 start
 sudo service uwsgi-echo-02 start
 sudo service uwsgi-shrubgrazer start
 ```
+
+copy over the crontabs manually
 
 1. At VPS provider open up TCP 443 for HTTPS and UDP 60000-61000 for
    mosh at firewall
