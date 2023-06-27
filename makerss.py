@@ -926,6 +926,9 @@ body {
 #content li:nth-child(odd) {
   background: #EEE;
 }
+dd {
+  margin-bottom: 0.5em;
+}
 .date { font-size: 85%% ; color: black }
 .headfoot { margin: 3px }
 .headfoot ul {
