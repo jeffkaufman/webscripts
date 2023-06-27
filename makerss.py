@@ -886,6 +886,13 @@ def start():
     config.relative_url(post.link()), post.title, post.month,
     post.day, post.year) for post in tag_posts)
 
+    intro = wrap_intro(INTROS.get(tag, ""))
+    if tag == "all":
+      intro = "<dl>%s</dl>" % (
+        "\n".join(
+          "<dt><a href='/news/%s'>%s</a></dt><dd>%s</dd>" % (k, k, v)
+          for (k, v) in sorted(INTROS.items(), key=lambda _: random.random())))
+
     with open(config.full_filename(os.path.join(
         config.new(config.out), '%s.html' % tag)), 'w') as outf:
       outf.write('''\
@@ -950,7 +957,7 @@ body {
   links_partial(),
   tag,
   rss_link,
-  wrap_intro(INTROS.get(tag, "")),
+  intro,
   entries,
   links_partial()))
 
