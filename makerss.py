@@ -888,10 +888,11 @@ def start():
 
     intro = wrap_intro(INTROS.get(tag, ""))
     if tag == "all":
-      intro = "<dl>%s</dl>" % (
+      intro = "<dl>%s</dl><h3>All %s posts going back to 2004:</h3>" % (
         "\n".join(
           "<dt><a href='/news/%s'>%s</a></dt><dd>%s</dd>" % (k, k, v)
-          for (k, v) in sorted(INTROS.items(), key=lambda _: random.random())))
+          for (k, v) in sorted(INTROS.items(), key=lambda _: random.random())),
+        format(len(tag_posts), ","))
 
     with open(config.full_filename(os.path.join(
         config.new(config.out), '%s.html' % tag)), 'w') as outf:
