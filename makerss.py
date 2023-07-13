@@ -40,6 +40,7 @@ import lxml.html
 from copy import deepcopy
 from collections import defaultdict
 import json
+import urllib.parse
 
 SHOW_ADS=False
 
@@ -166,6 +167,13 @@ def title_to_url_component(s):
   s = re.sub("-*$", "", s)
   return s
 
+def title_to_encoded(s):
+  if s.endswith("?"):
+    s = s[:-1]
+  # these won't work, but at least they won't mess with other directories
+  s = s.replace("/", "-")
+  return s
+
 def dimensions(link_ondisk):
   link_ondisk_dims = '%s.dimensions' % link_ondisk
   dims = None
@@ -246,6 +254,7 @@ class Post:
     if yeslw:
       tags.append("lwfeed")
     self.name = title_to_url_component(title)
+    self.encoded_name = title_to_encoded(title)
     self.element = element
     self.openring = openring
     self.updates = {}
@@ -833,6 +842,14 @@ def start():
     with open(fname_base + '.html', 'w') as outf:
       outf.write(post.html())
     shutil.copy(fname_base + '.html', fname_slug)
+
+    with open(config.full_filename(
+        os.path.join(config.new(config.posts), post.encoded_name)) + ".html",
+              "w") as outf:
+      outf.write(
+        '<meta http-equiv=refresh content="0;URL=\'%s\'">\n' % (
+          post.name))
+
     st = os.stat(fname_slug)
     os.chmod(fname_slug, st.st_mode & (stat.S_IRUSR | stat.S_IWUSR))
 
