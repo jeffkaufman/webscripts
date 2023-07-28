@@ -732,6 +732,7 @@ def parsePosts():
         except Exception:
           print(post_elements)
           print(title_h3.text)
+          print("Prev: %s" % posts[-1].title)
           raise
         assert title_h3.tag == 'h3'
         title = title_h3.text
