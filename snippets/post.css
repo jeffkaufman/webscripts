@@ -137,7 +137,7 @@ body {margin: 0}
   margin-right: 0.5rem;
 }
 pre {
-  overflow-x: scroll;
+  overflow-x: auto;
 }
 .headfoot ul {
   list-style-type: none;
