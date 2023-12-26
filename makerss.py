@@ -318,8 +318,16 @@ class Post:
                          'https://mastodon.mit.edu/@jefftk/%s' % token,
                          token))
 
+    if self.published and self.year > "2020":
+      if not any(service[2] == "lw" for service in services):
+        print("nolw", title)
+        
+    
+
+        
     # sort by and then strip off priorities
     self.services = [x[1:] for x in sorted(services)]
+
     self.tags = list(sorted(set(x for x in tags if '/' not in x)))
 
     for possible_update in element.findall('.//b'):
