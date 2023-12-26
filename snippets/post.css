@@ -76,7 +76,7 @@ body {margin: 0}
   margin-right: 1em;
 }
 #older > .arr {
-  margin-left: em;
+  margin-left: 1em;
 }
 #older {
   justify-content: flex-end;

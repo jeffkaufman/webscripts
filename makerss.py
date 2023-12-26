@@ -804,11 +804,13 @@ def parsePosts():
 def links_partial():
   return '''
 <div class="headfoot">
+<ul>
   <li><a href="/" rel="author">Jeff Kaufman</a></li>
   <li><a href="/p/index">Posts</a></li>
   <li><a href="/news.rss">RSS</a></li>
   <li><a href="__REVERSE_RSS__">&#9666;&#9666;RSS</a></li>
   <li><a href="/contact">Contact</a></li>
+</ul>
 </div>
 '''
 
