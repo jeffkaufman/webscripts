@@ -694,6 +694,22 @@ def parse(s):
     print(s)
     raise
 
+def replace_xmp(s):
+  return re.sub(
+    r'<xmp>.*?</xmp>',
+    lambda m: "<pre>%s</pre>" % (quote(
+      m.group(0).removeprefix("<xmp>").removesuffix("</xmp>"))),
+    s,
+    flags=re.DOTALL)
+
+def replace_xmp(s):
+  return re.sub(
+    r'<xmp>(.*?)</xmp>',
+    lambda m: f"<pre>{quote(m.group(1))}</pre>",
+    s,
+    flags=re.DOTALL
+  )
+  
 def parsePosts():
   posts = []
   published_posts = []
@@ -715,7 +731,7 @@ def parsePosts():
     openring = parse(inf.read())
 
   with open(cleaned_fname) as inf:
-    tree = etree.parse(inf, etree.HTMLParser())
+    tree = lxml.html.fromstring(replace_xmp(inf.read()))
     body = tree.find('body')
 
     prev = None
