@@ -6,9 +6,9 @@ RSS_SOURCES="
   -s https://www.benkuhn.net/index.xml
   -s https://danluu.com/post/atom.xml
   -s https://www.lincolnquirk.com/feed.xml
-  -s https://sideways-view.com/feed/
   -s https://thingofthings.substack.com/feed.rss
   -s https://vkrakovna.wordpress.com/feed/
+  -s https://chromamine.com/feeds/posts.xml
   -s https://www.cold-takes.com/rss/"
 
 /home/jefftk/code/webscripts/makerss.py && echo "rss made" && \
