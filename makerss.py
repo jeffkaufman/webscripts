@@ -241,6 +241,9 @@ TAG_RENAMING = {
   "giving": "ea",
 }
 
+# post name -> set of posts names that reference it
+followups = defaultdict(set)
+
 class Post:
   def __init__(self, slug, date, title, tags, element, openring):
     self.slug = slug
@@ -347,6 +350,17 @@ class Post:
           parent.insert(parent.index(possible_update),
                         etree.Element('a', name=update.anchor))
 
+    for a_link in element.findall(".//a"):
+      href = a_link.get("href", "").replace("https://www.jefftk.com/p/", "/p/")
+      if not href.startswith("/p/"):
+        continue
+
+      href = href.replace("/p/", "")
+      assert "/" not in href
+
+      if self.published:
+        followups[href].add((self.slug, self.name, self.title))
+          
     for img_parent in element.findall('.//*[img]'):
       img = img_parent.find('img')
       src = img.get('src')
@@ -534,6 +548,20 @@ class Post:
 
     content.append(element)
 
+    if len(followups[self.name]) == 1:
+      (followup_slug, followup_name, followup_title), = followups[self.name]
+      content.append(parse('''<i>Follow-up: <a
+      href="https://www.jefftk.com/p/%s">%s<a></i>''' % (
+        followup_name, followup_title)))
+    elif len(followups[self.name]) > 1:
+      content.append(parse('<i>Follow-ups:</i>'))
+      content.append(parse('<ul>%s</ul>' % "\n".join(
+        '<li><i><a href="https://www.jefftk.com/p/%s">%s</a></i></li>' % (
+          followup_name, followup_title)
+        for (followup_slug, followup_name, followup_title)
+        in sorted(followups[self.name])
+        if followup_slug > self.slug)))
+    
     if self.newer_post:
       newer_section='''\
 <a id=newer href="%s">
