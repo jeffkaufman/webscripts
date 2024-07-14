@@ -960,7 +960,7 @@ def start():
 
     intro = wrap_intro(INTROS.get(tag, ""))
     if tag == "all":
-      intro = "<dl>%s</dl><h3>All %s posts going back to 2004:</h3>" % (
+      intro = "<dl>%s</dl><h3>All %s posts going back to 2004</h3>" % (
         "\n".join(
           "<dt><a href='/news/%s'>%s</a></dt><dd>%s</dd>" % (
             k, re.sub("^ea$", "effective altruism", k), v)
@@ -979,7 +979,6 @@ def start():
 </head>
 <body>
 <style>
-h2 { margin: .5em }
 body {
    margin: 0;
    padding: 0;
@@ -989,7 +988,7 @@ body {
   margin-left: auto;
   margin-right: auto;
 }
-#content p {
+#content p, #content dl, h2, h3 {
   margin: 5px;
 }
 #content li { list-style-type: none; margin: 0 }
