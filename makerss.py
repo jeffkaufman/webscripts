@@ -323,10 +323,8 @@ class Post:
 
     if self.published and self.year > "2020":
       if not any(service[2] == "lw" for service in services):
-        print("nolw", title)
+        print("Missing link to LW crosspost:", title)
         
-    
-
         
     # sort by and then strip off priorities
     self.services = [x[1:] for x in sorted(services)]
