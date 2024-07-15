@@ -548,11 +548,11 @@ class Post:
 
     if len(followups[self.name]) == 1:
       (followup_slug, followup_name, followup_title), = followups[self.name]
-      content.append(parse('''<i>Follow-up: <a
+      content.append(parse('''<i>Referenced in: <a
       href="https://www.jefftk.com/p/%s">%s<a></i>''' % (
         followup_name, followup_title)))
     elif len(followups[self.name]) > 1:
-      content.append(parse('<i>Follow-ups:</i>'))
+      content.append(parse('<i>Referenced in:</i>'))
       content.append(parse('<ul>%s</ul>' % "\n".join(
         '<li><i><a href="https://www.jefftk.com/p/%s">%s</a></i></li>' % (
           followup_name, followup_title)
