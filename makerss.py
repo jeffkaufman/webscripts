@@ -320,6 +320,11 @@ class Post:
         services.append((8, 'mastodon', service,
                          'https://mastodon.mit.edu/@jefftk/%s' % token,
                          token))
+      elif service == 'bs':
+        services.append(
+          (9, 'bluesky', service,
+           'https://bsky.app/profile/jeffkaufman.bsky.social/post/%s' % token,
+           token))
 
     if self.published and self.year > "2020":
       if not any(service[2] == "lw" for service in services):
