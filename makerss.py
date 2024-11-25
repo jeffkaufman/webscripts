@@ -323,7 +323,7 @@ class Post:
       elif service == 'bs':
         services.append(
           (9, 'bluesky', service,
-           'https://bsky.app/profile/jeffkaufman.bsky.social/post/%s' % token,
+           'https://bsky.app/profile/jefftk.com/post/%s' % token,
            token))
 
     if self.published and self.year > "2020":
