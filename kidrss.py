@@ -21,6 +21,11 @@ config = {
     "domain": "annawise.net",
     "name": "Anna Wise",
   },
+  "nora": {
+    "path": "nw",
+    "domain": "norawise.com",
+    "name": "Nora Wise",
+  },
 }[user]
 
 posts = []

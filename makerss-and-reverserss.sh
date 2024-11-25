@@ -3,6 +3,7 @@ RSS_SOURCES="
   -s https://juliawise.net/feed/
   -s https://www.lilywise.com/posts.rss
   -s https://www.annawise.net/posts.rss
+  -s https://www.norawise.com/posts.rss
   -s https://www.benkuhn.net/index.xml
   -s https://danluu.com/post/atom.xml
   -s https://www.lincolnquirk.com/feed.xml
