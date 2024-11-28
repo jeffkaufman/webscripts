@@ -44,6 +44,8 @@ def slurp(url, data=None, headers={}, timeout=60):
         identifier = "/user/jkaufman"
     elif "schelling.pt" in url:
         identifier = "@jefftk@schelling.pt"
+    elif "bsky.app" in url:
+        identifier = "@jefftk.com"
 
     if 'User-Agent' not in headers:
         headers['User-Agent'] = '%s bot by %s (www.jefftk.com)' % (botname, identifier)
@@ -385,11 +387,52 @@ def m_style_service(token, host):
 
     return gather_children(comments, token)
 
+def bs_recursively_load_replies(post, comments):
+    comment_id = escape(post["post"]["cid"])
+    username = escape(post["post"]["author"]["displayName"] or
+                      post["post"]["author"]["handle"])
+
+    post_slug = os.path.basename(post["post"]["uri"])
+    permalink = escape(
+        "https://bsky.app/profile/%s/post/%s" % (
+            post["post"]["author"]["handle"], post_slug))
+    timestamp = epoch(post["post"]["record"]["createdAt"])
+    comment_html = strip_tags(post["post"]["record"]["text"])
+    children = []
+    parent_id = escape(post["post"]["record"]["reply"]["parent"]["cid"])
+
+    comments[comment_id] = [
+        username, permalink, comment_id, comment_html,
+        timestamp, children, parent_id]
+
+    for child in post.get("replies", []):
+        bs_recursively_load_replies(child, comments)
+
+def bs_style_service(token, host):
+    if not re.match('^[0-9a-z]+$', token):
+        return []
+
+    url = ("%s/xrpc/app.bsky.feed.getPostThread?uri="
+           "at://jefftk.com/app.bsky.feed.post/%s" % (
+               host, token))
+    response = json.loads(slurp(url))
+
+    comments = {} # id -> comment array
+
+    for child in response["thread"].get("replies", []):
+        bs_recursively_load_replies(child, comments)
+
+    return gather_children(
+        comments, escape(response["thread"]["post"]["cid"]))
+
 def service_m1(token):
     return m_style_service(token, 'https://schelling.pt')
 
 def service_m(token):
     return m_style_service(token, 'https://mastodon.mit.edu')
+
+def service_bs(token):
+    return bs_style_service(token, 'https://public.api.bsky.app')
 
 def service_lw(token):
     return lw_style_service(token, 'lw', 'https://www.lesswrong.com')
@@ -517,6 +560,7 @@ SERVICE_FNS = {
     'r': service_r,
     'm1': service_m1,
     'm': service_m,
+    'bs': service_bs,
     'hn': service_hn}
 
 # actually respond to the request
