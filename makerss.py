@@ -54,6 +54,8 @@ def load_snippet(snippet_name):
 def load_html_js_snippet(snippet_name):
   return '<script nonce="{{NONCE}}" type="text/javascript">%s</script>' % load_snippet(snippet_name)
 
+dated_comment_services = defaultdict(list)
+
 class Configuration:
   def __init__(self):
     self.site_url = 'https://www.jefftk.com'
@@ -333,6 +335,9 @@ class Post:
         
     # sort by and then strip off priorities
     self.services = [x[1:] for x in sorted(services)]
+
+    for _, service, _, token in self.services:
+      dated_comment_services[slug].append((service, token))
 
     self.tags = list(sorted(set(x for x in tags if '/' not in x)))
 
@@ -944,6 +949,9 @@ def start():
           outf.write(rss_entry)
       outf.write(SNIPPETS['rss_footer'])
 
+  with open("%s/dated_comment_services.json" % config.site_dir, "w") as outf:
+    json.dump(dated_comment_services, outf)
+      
   tag_json = {}
 
   for tag, tag_posts in tag_to_posts.items():
