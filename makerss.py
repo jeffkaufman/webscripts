@@ -55,6 +55,7 @@ def load_html_js_snippet(snippet_name):
   return '<script nonce="{{NONCE}}" type="text/javascript">%s</script>' % load_snippet(snippet_name)
 
 dated_comment_services = defaultdict(list)
+slug_to_url = {}
 
 class Configuration:
   def __init__(self):
@@ -406,6 +407,8 @@ class Post:
             if srcsets:
               srcsets.insert(0, '%s %sw' % (src, width))
               img.set('srcset', ','.join(srcsets))
+
+    slug_to_url[slug] = self.link()
 
   def link(self):
     return os.path.join(config.posts, self.name)
@@ -951,6 +954,9 @@ def start():
 
   with open("%s/dated_comment_services.json" % config.site_dir, "w") as outf:
     json.dump(dated_comment_services, outf)
+      
+  with open("%s/slug_to_url.json" % config.site_dir, "w") as outf:
+    json.dump(slug_to_url, outf)
       
   tag_json = {}
 
