@@ -231,7 +231,10 @@ function display_posts_helper(comments) {
 
     h += "<div class=comment id='" + anchor + "' ts=" + ts + ">";
     h += "<a href='" + user_link + "'>" + name + "</a> (";
-    h += friendly_ts(ts) + ", via " +  service_abbr(service) + "):";
+    if (ts > 1) {
+      h += friendly_ts(ts) + ", ";
+    }
+    h += "via " +  service_abbr(service) + "):";
     h += "<a href='#" + anchor + "' class=commentlink>link</a>";
     h += "<div";
     if (last_visit.length > 0 && ts > last_visit/1000) {
