@@ -55,6 +55,7 @@ def load_html_js_snippet(snippet_name):
   return '<script nonce="{{NONCE}}" type="text/javascript">%s</script>' % load_snippet(snippet_name)
 
 dated_comment_services = defaultdict(list)
+all_fetchable_comments = []
 slug_to_url = {}
 
 class Configuration:
@@ -190,6 +191,20 @@ def dimensions(link_ondisk):
       outf.write(dims)
   width, height = dims.split('x')
   return int(width), int(height)
+
+def short_month_to_numeric(short_month):
+    return {'Jan': 1,
+            'Feb': 2,
+            'Mar': 3,
+            'Apr': 4,
+            'May': 5,
+            'Jun': 6,
+            'Jul': 7,
+            'Aug': 8,
+            'Sep': 9,
+            'Oct': 10,
+            'Nov': 11,
+            'Dec': 12}[short_month]
 
 class Update:
   def __init__(self, slug, post, element):
@@ -600,6 +615,10 @@ class Post:
       newer_section, older_section)))
 
     if self.services:
+      for _, service_abbr, _, service_tag in self.services:
+        all_fetchable_comments.append((self.slug, "%s/%s" % (
+          service_abbr, service_tag)))
+      
       content.append(parse('<p>Comment via: %s</p>\n' % (
         ', '.join('<a href="%s">%s</a>' % (service_link, service_name)
                   for service_name, _, service_link, _ in self.services))))
@@ -673,6 +692,14 @@ class Post:
     if image_link is None:
       image_link = "%s/jefftk-glyph-framed.jpg" % config.site_url
 
+    head.append(etree.Element(
+      'meta', name="citation_title", content=self.title))
+    head.append(etree.Element(
+      'meta', name="citation_author", content="Kaufman, Jeff T."))
+    head.append(etree.Element(
+      'meta', name="citation_publication_date", content="%s/%s/%s" % (
+        self.year, short_month_to_numeric(self.short_month), self.day)))
+      
     head.append(etree.Element('meta', property="og:title", content=self.title))
     head.append(etree.Element('meta', property="og:type", content="article"))
     head.append(etree.Element('meta', property="og:image", content=image_link))
@@ -680,6 +707,8 @@ class Post:
       config.site_url, self.link())))
     head.append(etree.Element('meta', property="og:description", content=description))
 
+
+    
     page = etree.Element('html', lang='en', prefix="og: https://ogp.me/ns#")
     page.append(head)
     page.append(body)
@@ -954,6 +983,9 @@ def start():
 
   with open("%s/dated_comment_services.json" % config.site_dir, "w") as outf:
     json.dump(dated_comment_services, outf)
+  with open("%s/all_fetchable_comments.txt" % config.site_dir, "w") as outf:
+    for slug, fetchable_comment in all_fetchable_comments:
+      outf.write("%s %s\n" % (slug, fetchable_comment))
       
   with open("%s/slug_to_url.json" % config.site_dir, "w") as outf:
     json.dump(slug_to_url, outf)
