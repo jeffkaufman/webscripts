@@ -41,8 +41,10 @@ from copy import deepcopy
 from collections import defaultdict
 import json
 import urllib.parse
+import markdownify
 
 SHOW_ADS=False
+WRITE_BEST_POSTS_MARKDOWN = True
 
 def relative_to_absolute(pathname):
   return os.path.join(os.path.dirname(__file__), pathname)
@@ -347,8 +349,8 @@ class Post:
     if self.published and self.year > "2020":
       if not any(service[2] == "lw" for service in services):
         print("Missing link to LW crosspost:", title)
-        
-        
+
+
     # sort by and then strip off priorities
     self.services = [x[1:] for x in sorted(services)]
 
@@ -384,7 +386,7 @@ class Post:
 
       if self.published:
         followups[href].add((self.slug, self.name, self.title))
-          
+
     for img_parent in element.findall('.//*[img]'):
       img = img_parent.find('img')
       src = img.get('src')
@@ -587,7 +589,7 @@ class Post:
         for (followup_slug, followup_name, followup_title)
         in sorted(followups[self.name])
         if followup_slug > self.slug)))
-    
+
     if self.newer_post:
       newer_section='''\
 <a id=newer href="%s">
@@ -618,7 +620,7 @@ class Post:
       for _, service_abbr, _, service_tag in self.services:
         all_fetchable_comments.append((self.slug, "%s/%s" % (
           service_abbr, service_tag)))
-      
+
       content.append(parse('<p>Comment via: %s</p>\n' % (
         ', '.join('<a href="%s">%s</a>' % (service_link, service_name)
                   for service_name, _, service_link, _ in self.services))))
@@ -699,7 +701,7 @@ class Post:
     head.append(etree.Element(
       'meta', name="citation_publication_date", content="%s/%s/%s" % (
         self.year, short_month_to_numeric(self.short_month), self.day)))
-      
+
     head.append(etree.Element('meta', property="og:title", content=self.title))
     head.append(etree.Element('meta', property="og:type", content="article"))
     head.append(etree.Element('meta', property="og:image", content=image_link))
@@ -708,7 +710,7 @@ class Post:
     head.append(etree.Element('meta', property="og:description", content=description))
 
 
-    
+
     page = etree.Element('html', lang='en', prefix="og: https://ogp.me/ns#")
     page.append(head)
     page.append(body)
@@ -721,6 +723,12 @@ class Post:
     return etree.tostring(
       element, method='html', pretty_print=True).decode(
         'utf-8').replace(config.break_token, '')
+
+  def markdown(self):
+    return "# %s\nJeff Kaufman, %s\n\n%s\n" % (
+      self.title,
+      self.date,
+      markdownify.markdownify(self.bare_html(self.element)))
 
   def rss(self):
     element = deepcopy(self.element)
@@ -777,7 +785,7 @@ def replace_xmp(s):
     s,
     flags=re.DOTALL
   )
-  
+
 def parsePosts():
   posts = []
   published_posts = []
@@ -865,6 +873,17 @@ def parsePosts():
 
       prev_prev = prev
       prev = element
+
+  if WRITE_BEST_POSTS_MARKDOWN:
+    with open(config.full_filename("bestposts-subset.md"), "w") as outf:
+      for slug, title, weight in sorted(BEST_POSTS):
+        if ((slug > "2024-01-01" and weight >= 2.0) or
+            (slug > "2023-01-01" and weight >= 3.0) or
+            (weight >= 10.0)):
+          outf.write(posts_by_slug[slug].markdown())
+    with open(config.full_filename("bestposts.md"), "w") as outf:
+      for slug, title, weight in sorted(BEST_POSTS):
+        outf.write(posts_by_slug[slug].markdown())
 
   # Now that we've loaded all the posts, update links to use pretty
   # names and not slugs.
@@ -986,10 +1005,10 @@ def start():
   with open("%s/all_fetchable_comments.txt" % config.site_dir, "w") as outf:
     for slug, fetchable_comment in all_fetchable_comments:
       outf.write("%s %s\n" % (slug, fetchable_comment))
-      
+
   with open("%s/slug_to_url.json" % config.site_dir, "w") as outf:
     json.dump(slug_to_url, outf)
-      
+
   tag_json = {}
 
   for tag, tag_posts in tag_to_posts.items():
