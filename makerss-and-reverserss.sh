@@ -10,6 +10,7 @@ RSS_SOURCES="
   -s https://thingofthings.substack.com/feed.rss
   -s https://vkrakovna.wordpress.com/feed/
   -s https://chromamine.com/feeds/posts.xml
+  -s https://blog.rossry.net/rss/
   -s https://www.cold-takes.com/rss/"
 
 /home/jefftk/code/webscripts/makerss.py && echo "rss made" && \
