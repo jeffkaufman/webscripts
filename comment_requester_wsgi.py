@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import cgi
 import traceback
 import re
 import urllib.request, urllib.parse, urllib.error
@@ -387,6 +386,42 @@ def m_style_service(token, host):
 
     return gather_children(comments, token)
 
+def substack_style_service(token):
+    # Only support posts from jefftkaufman.substack.com
+    if not re.match('^[0-9]+$', token):
+        return []
+
+    # Use Substack's internal API endpoint for comments
+    url = "https://jefftkaufman.substack.com/api/v1/posts/%s/comments" % token
+
+    try:
+        response = json.loads(slurp(url))
+    except:
+        return []
+
+    comments = {}
+
+    for comment in response.get('comments', []):
+        comment_id = str(comment['id'])
+        username = escape(comment.get('name', 'Anonymous'))
+        permalink = "https://jefftkaufman.substack.com/p/%s/comment/%s" % (
+            comment.get('post', {}).get('slug', 'post'), comment_id)
+        timestamp = epoch(comment['date'])
+        comment_html = escape(comment.get('body', ''))
+        children = []
+        parent_id = comment.get('parent_id')
+        if parent_id:
+            parent_id = str(parent_id)
+
+        comments[comment_id] = [
+            username, permalink, "substack-%s" % comment_id,
+            comment_html, timestamp, children, parent_id]
+
+    return gather_children(comments)
+
+def service_substack(token):
+    return substack_style_service(token)
+
 def bs_recursively_load_replies(post, comments):
     comment_id = escape(post["post"]["cid"])
     username = escape(post["post"]["author"]["displayName"] or
@@ -561,7 +596,8 @@ SERVICE_FNS = {
     'm1': service_m1,
     'm': service_m,
     'bs': service_bs,
-    'hn': service_hn}
+    'hn': service_hn,
+    'substack': service_substack}
 
 # actually respond to the request
 # raising errors here will give a 500 and put the traceback in the body
