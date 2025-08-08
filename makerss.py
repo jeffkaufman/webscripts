@@ -345,7 +345,23 @@ class Post:
           (9, 'bluesky', service,
            'https://bsky.app/profile/jefftk.com/post/%s' % token,
            token))
+      elif service == 'ss':
+        if not token:
+          token = self.name
+        
+        services.append(
+          (10, 'substack', service,
+           'https://jefftkaufman.substack.com/p/%s' % token,
+           token))
 
+    if self.published and self.slug < "2025-07-21" and not any(
+            service[1] == "substack" for service in services): 
+        services.append(
+          (10, 'substack', "ss",
+           'https://jefftkaufman.substack.com/p/%s' % self.name,
+           self.name))
+      
+        
     if self.published and self.year > "2020":
       if not any(service[2] == "lw" for service in services):
         print("Missing link to LW crosspost:", title)
