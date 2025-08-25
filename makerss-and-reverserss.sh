@@ -12,6 +12,7 @@ RSS_SOURCES="
   -s https://chromamine.com/feeds/posts.xml
   -s https://blog.rossry.net/rss/
   -s https://evanfields.net/feed.xml
+  -s https://emmaazelborn.com/feed.xml
   -s https://www.cold-takes.com/rss/"
 
 /home/jefftk/code/webscripts/makerss.py && echo "rss made" && \
