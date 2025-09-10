@@ -25,6 +25,6 @@ for _ in range(simulations):
 
 print(f"Out of {simulations} simulations, {at_least_this_extreme} "
       f"({100*at_least_this_extreme/simulations}%) "
-      "were at least this extreme")
+      f"were at least this extreme ({threshold})")
 
 
