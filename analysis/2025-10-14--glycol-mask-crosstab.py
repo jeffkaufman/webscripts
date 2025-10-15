@@ -4,8 +4,8 @@ import csv
 from collections import Counter
 
 CURRENT="I currently attend BIDA:"
-OPTIONAL="If we started requiring masks at all our dances, I would attend:"
-REQUIRED="If we stopped requiring masks at any of our dances, I would attend:"
+REQUIRED="If we started requiring masks at all our dances, I would attend:"
+OPTIONAL="If we stopped requiring masks at any of our dances, I would attend:"
 
 GLYCOL="If BIDA added Glycol Vapors, my attendance would"
 
@@ -185,7 +185,12 @@ with open("responses.tsv") as inf:
 print(f"Limiting to non-other responses dropped us from "
       f"{total} to {total_complete}")
 
-print("glycol", "prefer less","no change","prefer more","inconsistent", sep="\t")
+print("glycol",
+      "prefer less",
+      "no change",
+      "prefer more",
+      "inconsistent",
+      sep="\t")
 for glycol in "increase", "same", "decrease":
     print(glycol,
           counts["prefer less", glycol],
