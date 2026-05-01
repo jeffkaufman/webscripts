@@ -70,8 +70,14 @@ window.addEventListener("load", () => {
       loadPreview();
     });
 
-    // https://stackoverflow.com/questions/5259154/firefox-back-button-vs-iframes
-    pifr.contentWindow.location.replace(iframeTarget);
+    // Use srcdoc for loading, to avoid firefox from marking things as visited
+    fetch(iframeTarget)
+      .then(response => response.text())
+      .then(html => {
+        // Inject the raw HTML directly. No navigation event occurs.
+        pifr.srcdoc = html;
+      })
+      .catch(err => console.error("Preview load failed", err))
 
     currentPreview = nextPreview;
     nextPreview = null;
