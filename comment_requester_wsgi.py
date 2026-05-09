@@ -158,7 +158,7 @@ class HnHtmlParser(HTMLParser):
             self.state = "need-user-name"
         elif self.state == "need-age-a" and tag == "a":
             self.state = "need-age-text"
-        elif self.state == "need-comment-div" and tag == "div" and self.has_class(attrs, "comment"):
+        elif self.state == "need-comment-div" and tag == "div" and self.has_class(attrs, "commtext"):
             self.state = "need-comment"
             self.current_text = ""
         elif self.state == "need-comment" and tag == "i":
