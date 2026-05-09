@@ -156,8 +156,10 @@ class HnHtmlParser(HTMLParser):
         elif self.state == "need-user" and tag == "a" and self.has_class(attrs, "hnuser"):
             self.current_user_link = self.get_attr(attrs, "href")
             self.state = "need-user-name"
-        elif self.state == "need-age-a" and tag == "a":
-            self.state = "need-age-text"
+        elif self.state == "need-age-span" and tag == "span" and self.has_class(attrs, "age"):
+            # title is e.g. "2025-05-18T12:51:17 1747572677" — second token is unix epoch
+            self.current_ts = int(self.get_attr(attrs, "title").split()[1])
+            self.state = "need-comment-div"
         elif self.state == "need-comment-div" and tag == "div" and self.has_class(attrs, "commtext"):
             self.state = "need-comment"
             self.current_text = ""
@@ -178,7 +180,7 @@ class HnHtmlParser(HTMLParser):
                                   self.current_id,
                                   self.current_user_link,
                                   self.current_user_name,
-                                  self.current_age,
+                                  self.current_ts,
                                   self.current_text))
             self.current_text = ""
             self.state = "comments"
@@ -193,10 +195,7 @@ class HnHtmlParser(HTMLParser):
     def handle_data(self, data):
         if self.state == "need-user-name":
             self.current_user_name = data
-            self.state = "need-age-a"
-        elif self.state == "need-age-text":
-            self.current_age = data
-            self.state = "need-comment-div"
+            self.state = "need-age-span"
         elif self.state == "need-comment":
             data = data.strip()
             if data:
@@ -207,9 +206,7 @@ def pull_hn_comments(url):
   parser.feed(slurp(url))
 
   threaded_comments = []
-  for indent, current_id, user_link, user_name, age, text in parser.comments:
-      (time_ago, time_units), = re.findall("^([\\d]*) (year|day|hour|minute|second)s? ago$", age)
-
+  for indent, current_id, user_link, user_name, ts, text in parser.comments:
       append_to = threaded_comments
       for i in range(indent):
           # find the last comment in the list, prepare to append to its comment section
@@ -219,29 +216,9 @@ def pull_hn_comments(url):
           "https://news.ycombinator.com/item?id=%s" % current_id,
           "hn-%s" % current_id,
           text,
-          timedelta_to_epoch(int(time_ago), time_units),
+          ts,
           []])
   return threaded_comments
-
-def timedelta_to_epoch(time_ago, time_units):
-  unit_table = {"second": 0,
-                "minute": 1,
-                "hour": 2,
-                "day": 3,
-                "year": 4}
-  unit = unit_table[time_units]
-  if unit >= unit_table["minute"]:
-    time_ago *= 60
-  if unit >= unit_table["hour"]:
-    time_ago *= 60
-  if unit >= unit_table["day"]:
-    time_ago *= 24
-  if unit >= unit_table["day"]:
-    time_ago *= 24
-  if unit >= unit_table["year"]:
-    time_ago *= 365
-
-  return int(time.time())-time_ago
 
 def pull_reddit_style_rss(url):
     def pull_tag(item, tag):
