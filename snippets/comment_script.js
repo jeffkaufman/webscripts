@@ -39,18 +39,115 @@ function canonical_wordlist(s) {
   return (s.replace(/&[^ ;]+;/g, '')
            .replace(/<[^> ]+>/g, '')
            .toLowerCase()
+           .replace(/\s+/g, ' ')
            .replace(/[^a-z0-9 ]/g, '')
+           .trim()
            .split(" "));
 }
 
-function build_phrase_dictionary_for_comment(comment, index) {
-  var words = canonical_wordlist(comment);
-  for (var i = 0 ; i + quote_threshold < words.length ; i++) {
+function wordlist_phrases(words) {
+  var phrases = [];
+  for (var i = 0 ; i + quote_threshold <= words.length ; i++) {
     var phrase = [];
     for (var j = 0 ; j < quote_threshold ; j++) {
       phrase.push(words[i+j]);
     }
-    phrase = phrase.join(" ");
+    phrases.push(phrase.join(" "));
+  }
+  return phrases;
+}
+
+// When I serialize a post into a thread on bluesky or mastodon my own
+// replies come back as comments, which is silly: they're just the post you
+// already read.  Identify them so we can leave them out.
+
+// Only the services where I thread; add more if that changes.
+var me_by_service = {
+  'bluesky': 'Jeff Kaufman',
+  'mastodon': 'Jeff Kaufman'};
+
+function is_me(comment) {
+  // name, ..., service
+  return comment[0] == me_by_service[comment[6]];
+}
+
+var post_phrases = null;
+
+// The post's phrases, as a hash, so echoes_post can just look them up.
+function get_post_phrases() {
+  if (post_phrases === null) {
+    post_phrases = {};
+    var pt = document.getElementsByClassName("pt")[0];
+    if (pt) {
+      var phrases = wordlist_phrases(canonical_wordlist(pt.textContent));
+      for (var i = 0 ; i < phrases.length ; i++) {
+        post_phrases[phrases[i]] = true;
+      }
+    }
+  }
+  return post_phrases;
+}
+
+// Is this comment (close to) a chunk of the post itself?
+function echoes_post(text) {
+  var in_post = get_post_phrases();
+  var phrases = wordlist_phrases(canonical_wordlist(text));
+  if (!phrases.length) {
+    // Too short to say anything with confidence.
+    return false;
+  }
+  var matches = 0;
+  for (var i = 0 ; i < phrases.length ; i++) {
+    if (in_post[phrases[i]]) {
+      matches += 1;
+    }
+  }
+  // Allow for light editing to fit the service's length limit.
+  return matches * 2 >= phrases.length;
+}
+
+// Drop the comments that are just me reading the post out loud.  A chunk is
+// only dropped if everyone from the top of the thread down to it is me, and
+// nobody else replied to that specific chunk: if someone did reply to it we
+// need to keep it as context for their reply.  Replies to a dropped chunk
+// move up into its place.
+function hide_serialized_post(comments) {
+  function has_outside_reply(comment) {
+    var children = comment[5];
+    for (var i = 0 ; i < children.length ; i++) {
+      if (!is_me(children[i])) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function walk(comments, all_mine) {
+    var kept = [];
+    for (var i = 0 ; i < comments.length ; i++) {
+      var comment = comments[i];
+      var mine = all_mine && is_me(comment);
+      // Check for replies before walking, since walking promotes replies to
+      // deeper chunks up into this comment's children.
+      var replied_to = has_outside_reply(comment);
+      comment[5] = walk(comment[5], mine);
+
+      if (mine && !replied_to && echoes_post(comment[3])) {
+        kept = kept.concat(comment[5]);
+      } else {
+        kept.push(comment);
+      }
+    }
+    return kept;
+  }
+
+  return walk(comments, true);
+}
+
+function build_phrase_dictionary_for_comment(comment, index) {
+  var phrases = wordlist_phrases(canonical_wordlist(comment));
+  for (var i = 0 ; i < phrases.length ; i++) {
+    var phrase = phrases[i];
     if (!dictionary[phrase]) {
       dictionary[phrase] = [];
     }
@@ -281,14 +378,19 @@ function recursively_add_service(c, service) {
 }
 
 function all_comments_sorted() {
-  var ts_comment = [];
+  var comments = [];
   for (var service in all_comments) {
     for (var i = 0 ; i < all_comments[service].length ; i++) {
       var comment_copy = deep_copy(all_comments[service][i]);
       recursively_add_service(comment_copy, service);
-      var ts = comment_copy[4];
-      ts_comment.push([ts, comment_copy]);
+      comments.push(comment_copy);
     }
+  }
+  comments = hide_serialized_post(comments);
+
+  var ts_comment = [];
+  for (var i = 0 ; i < comments.length ; i++) {
+    ts_comment.push([comments[i][4], comments[i]]);
   }
   ts_comment = ts_comment.sort();
   var c = [];
