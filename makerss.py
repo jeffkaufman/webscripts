@@ -345,6 +345,11 @@ class Post:
           (9, 'bluesky', service,
            'https://bsky.app/profile/jefftk.com/post/%s' % token,
            token))
+      elif service == 'x':
+        services.append(
+          (10, 'X', service,
+           'https://x.com/JeffTKaufman/status/%s' % token,
+           token))
       elif service == 'ss':
         if not token:
           token = self.name
