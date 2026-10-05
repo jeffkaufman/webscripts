@@ -1,4 +1,11 @@
 #!/bin/bash
+
+jgit() { git --git-dir="$HOME/jtk.git" --work-tree="$HOME/jtk" "$@"; }
+
+if ! jgit diff --quiet HEAD -- news_raw.html; then
+  jgit commit -q -m "Update news_raw.html" -- news_raw.html
+fi
+
 RSS_SOURCES="
   -s https://juliawise.net/feed/
   -s https://www.lilywise.com/posts.rss
@@ -27,3 +34,4 @@ RSS_SOURCES="
   < /home/jefftk/code/openring/in-big.html \
   | sed 's~https://danluu.com/post/atom/index.xml~https://danluu.com~g' \
   > /home/jefftk/jtk/ring.html
+
